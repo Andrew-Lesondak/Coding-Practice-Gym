@@ -9,6 +9,7 @@ export type SystemDesignMockSession = {
   phaseIndex: number;
   phaseStartedAt: number | null;
   phaseTimeRemainingSeconds: number;
+  phaseDurations?: Record<string, number>;
   responses: {
     drillResponses: Record<string, { content: string; rubricChecks: Record<string, boolean>; completedAt?: number }>;
     fullDesignResponse: { content: string; rubricChecks: Record<string, boolean>; completedAt?: number } | null;

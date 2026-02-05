@@ -24,6 +24,7 @@ const SystemDesignMockSession = () => {
   const [wentWell, setWentWell] = useState('');
   const [change, setChange] = useState('');
   const [weakest, setWeakest] = useState('');
+  const [confidence, setConfidence] = useState(3);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -134,6 +135,8 @@ const SystemDesignMockSession = () => {
     setStarted(false);
     const now = Date.now();
     const nextSession = { ...session };
+    const usedSeconds = phases[session.phaseIndex].seconds - session.phaseTimeRemainingSeconds;
+    nextSession.phaseDurations = { ...(nextSession.phaseDurations ?? {}), [phase.id]: usedSeconds };
     if (phase.id === 'full-design') {
       nextSession.responses.fullDesignResponse = {
         content,
@@ -149,7 +152,7 @@ const SystemDesignMockSession = () => {
       };
       nextSession.scores.drillScores[drillId] = rubricScore.overall;
     } else if (phase.id === 'reflection') {
-      nextSession.confidenceRating = 3;
+      nextSession.confidenceRating = confidence;
       nextSession.reflection = { wentWell, change, weakestPhase: weakest };
       nextSession.completedAt = now;
     }
@@ -224,6 +227,10 @@ const SystemDesignMockSession = () => {
             Weakest phase
             <input className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2" value={weakest} onChange={(e) => setWeakest(e.target.value)} />
           </label>
+          <div>
+            <label className="text-xs uppercase tracking-[0.2em] text-mist-300">Confidence (1-5)</label>
+            <input type="range" min={1} max={5} value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className="mt-2 w-full" />
+          </div>
           <button className="rounded-full bg-ember-500 px-4 py-2 text-xs font-semibold text-ink-950" onClick={handleEndPhase}>
             Finish interview
           </button>

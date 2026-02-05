@@ -15,6 +15,7 @@ import SystemDesignMockDashboard from '../pages/SystemDesignMockDashboard';
 import SystemDesignMockSession from '../pages/SystemDesignMockSession';
 import DSADrillsDashboard from '../pages/DSADrillsDashboard';
 import DSADrillDetail from '../pages/DSADrillDetail';
+import AnalyticsDashboard from '../pages/AnalyticsDashboard';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 
@@ -60,6 +61,7 @@ const App = () => {
         <Route path="/system-design/mock/:sessionId" element={<SystemDesignMockSession />} />
         <Route path="/dsa/drills" element={<DSADrillsDashboard />} />
         <Route path="/dsa/drills/:id" element={<DSADrillDetail />} />
+        <Route path="/analytics" element={<AnalyticsDashboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />

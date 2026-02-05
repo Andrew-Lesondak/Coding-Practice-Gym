@@ -7,6 +7,8 @@ import { dsaDrills } from '../data/dsaDrills';
 import { problems } from '../data/problems';
 import { parseEditRegions, isEditAllowed } from '../lib/dsaDrillEditRegions';
 import { runInWorker, RunResponse } from '../lib/runnerClient';
+import { saveDrillAttempt } from '../lib/dsaDrillStorage';
+import { getDrillTests } from '../lib/dsaDrillRunner';
 
 const DSADrillDetail = () => {
   const { id } = useParams();
@@ -21,6 +23,7 @@ const DSADrillDetail = () => {
   const [explainText, setExplainText] = useState('');
   const [confidence, setConfidence] = useState(3);
   const prevCodeRef = useRef('');
+  const [savedAttempt, setSavedAttempt] = useState(false);
 
   useEffect(() => {
     if (!drill) return;
@@ -57,6 +60,39 @@ const DSADrillDetail = () => {
     }
   }, [ended]);
 
+  useEffect(() => {
+    if (!ended || savedAttempt || !drill) return;
+    const durationSeconds = Math.max(0, drill.timeLimitMinutes * 60 - remaining);
+    if (drill.drillType === 'pattern') {
+      const passed = Boolean(patternText.trim() && explainText.trim());
+      saveDrillAttempt({
+        drillId: drill.id,
+        problemId: drill.problemId,
+        drillType: drill.drillType,
+        difficulty: drill.difficulty,
+        completedAt: new Date().toISOString(),
+        durationSeconds,
+        passed,
+        confidence
+      });
+      setSavedAttempt(true);
+      return;
+    }
+    if (runResult) {
+      saveDrillAttempt({
+        drillId: drill.id,
+        problemId: drill.problemId,
+        drillType: drill.drillType,
+        difficulty: drill.difficulty,
+        completedAt: new Date().toISOString(),
+        durationSeconds,
+        passed: runResult.ok,
+        confidence
+      });
+      setSavedAttempt(true);
+    }
+  }, [ended, savedAttempt, drill, runResult, patternText, explainText, confidence, remaining]);
+
   if (!drill || !problem) {
     return (
       <div className="space-y-4">
@@ -84,7 +120,7 @@ const DSADrillDetail = () => {
 
   const runTests = async () => {
     if (!problem) return;
-    const tests = drill.visibleTestsOnly ? problem.tests.visible : [...problem.tests.visible, ...problem.tests.hidden];
+    const tests = getDrillTests(problem, drill);
     const result = await runInWorker({
       code,
       functionName: problem.functionName,

@@ -54,6 +54,10 @@ Drills are short, time-boxed exercises focused on 1–3 steps of system design. 
 
 Mock interviews simulate a 45-minute system design interview using a fixed sequence of drills followed by a full design and reflection. Sessions are stored locally and can be reviewed after completion.
 
+## DSA Speed Drills
+
+DSA Speed Drills provide short, focused exercises (3–10 minutes) using existing problems. Drills are partial: pattern recognition, core loop, invariant maintenance, or bug-fix. They run visible tests only and never replace guided stubs.
+
 ## Run locally
 
 ```bash

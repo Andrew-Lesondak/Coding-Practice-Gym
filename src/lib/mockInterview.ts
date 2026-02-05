@@ -46,6 +46,7 @@ export const createMockSession = (
     phaseIndex: 0,
     phaseStartedAt: null,
     phaseTimeRemainingSeconds: phases[0].seconds,
+    phaseDurations: {},
     responses: {
       drillResponses: {},
       fullDesignResponse: null
