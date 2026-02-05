@@ -1,4 +1,4 @@
-import { problems } from '../data/problems';
+import { Problem } from '../types/problem';
 import { runInWorker } from './runnerClient';
 
 export type ValidationIssue = {
@@ -6,7 +6,7 @@ export type ValidationIssue = {
   message: string;
 };
 
-export const validateProblemPack = async (): Promise<ValidationIssue[]> => {
+export const validateProblemPack = async (problems: Problem[]): Promise<ValidationIssue[]> => {
   const issues: ValidationIssue[] = [];
 
   for (const problem of problems) {

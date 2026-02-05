@@ -92,6 +92,29 @@ Limitations:
 3. Add visible and hidden tests with JSON argument arrays.
 4. If you need a different input/output structure, set `inputFormat` or `outputFormat` (linked lists or binary trees).
 
+## Problem authoring (local-only)
+
+Visit `/author` in dev mode to draft a new problem in the browser. The authoring workspace includes:
+
+- Live validation for step markers, tests, and reference solution.
+- Import/export JSON and copy-to-clipboard.
+- Save to a local overlay pack stored in `localStorage` (dev only).
+
+### Stub marker format
+
+```ts
+// Step 1: Describe the intent.
+// TODO(step 1 start)
+// placeholder
+// TODO(step 1 end)
+```
+
+Step numbers must be sequential starting at 1, and each step must have exactly one TODO start and end marker.
+
+### Overlay pack behavior
+
+Overlay problems are merged with the built-in pack at runtime. If an overlay problem shares the same `id`, the overlay version replaces the built-in one. Use the overlay toggle in `/author` to enable or disable overlay problems.
+
 ## Roadmap (v2 ideas)
 
 1. Optional backend for syncing progress across devices.

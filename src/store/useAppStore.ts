@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ProgressState, SettingsState, ProblemProgress } from '../types/progress';
+import { getOverlayEnabled, setOverlayEnabled } from '../lib/problemPack';
 
 const initialSettings: SettingsState = {
   languageMode: 'ts',
   hintLevel: 1,
-  lockSteps: true
+  lockSteps: true,
+  overlayEnabled: getOverlayEnabled()
 };
 
 const createDefaultProgress = (): ProblemProgress => ({
@@ -19,10 +21,13 @@ const createDefaultProgress = (): ProblemProgress => ({
 type AppState = {
   progress: ProgressState;
   settings: SettingsState;
+  overlayVersion: number;
   updateProblemProgress: (problemId: string, patch: Partial<ProblemProgress>) => void;
   setStepCompletion: (problemId: string, stepIndex: number, completed: boolean) => void;
   resetProblem: (problemId: string) => void;
   updateSettings: (patch: Partial<SettingsState>) => void;
+  toggleOverlay: (enabled: boolean) => void;
+  bumpOverlayVersion: () => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -30,6 +35,7 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       progress: { problems: {} },
       settings: initialSettings,
+      overlayVersion: 0,
       updateProblemProgress: (problemId, patch) =>
         set((state) => {
           const current = state.progress.problems[problemId] ?? createDefaultProgress();
@@ -72,6 +78,15 @@ export const useAppStore = create<AppState>()(
       updateSettings: (patch) =>
         set((state) => ({
           settings: { ...state.settings, ...patch }
+        })),
+      toggleOverlay: (enabled) =>
+        set((state) => {
+          setOverlayEnabled(enabled);
+          return { settings: { ...state.settings, overlayEnabled: enabled } };
+        }),
+      bumpOverlayVersion: () =>
+        set((state) => ({
+          overlayVersion: state.overlayVersion + 1
         }))
     }),
     {

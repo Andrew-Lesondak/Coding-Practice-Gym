@@ -27,6 +27,11 @@ const Layout = ({ children }: { children: ReactNode }) => {
             <NavLink className={navLink} to="/settings">
               Settings
             </NavLink>
+            {import.meta.env.DEV && (
+              <NavLink className={navLink} to="/author">
+                Author
+              </NavLink>
+            )}
           </nav>
         </div>
       </header>

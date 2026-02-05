@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { problems } from '../data/problems';
+import { useProblems } from '../lib/useProblems';
 import ProblemCard from '../components/ProblemCard';
 import FilterBar from '../components/FilterBar';
 import { useAppStore } from '../store/useAppStore';
@@ -10,12 +10,13 @@ const Catalog = () => {
   const [patternFilter, setPatternFilter] = useState('All');
   const [difficultyFilter, setDifficultyFilter] = useState('All');
   const progress = useAppStore((state) => state.progress);
+  const problems = useProblems();
 
   const patterns = useMemo(() => {
     const set = new Set<string>();
     problems.forEach((problem) => problem.patterns.forEach((pattern) => set.add(pattern)));
     return ['All', ...Array.from(set).sort()];
-  }, []);
+  }, [problems]);
 
   const filtered = useMemo(() => {
     return problems.filter((problem) => {

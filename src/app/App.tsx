@@ -5,21 +5,24 @@ import Dashboard from '../pages/Dashboard';
 import Catalog from '../pages/Catalog';
 import ProblemDetail from '../pages/ProblemDetail';
 import Settings from '../pages/Settings';
+import Author from '../pages/Author';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
+import { useProblems } from '../lib/useProblems';
 
 const App = () => {
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
+  const problems = useProblems();
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     let active = true;
-    validateProblemPack().then((issues) => {
+    validateProblemPack(problems).then((issues) => {
       if (active) setValidationIssues(issues);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [problems]);
 
   return (
     <Layout>
@@ -40,6 +43,7 @@ const App = () => {
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/problem/:id" element={<ProblemDetail />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

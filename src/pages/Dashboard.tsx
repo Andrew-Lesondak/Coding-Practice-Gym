@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
-import { problems } from '../data/problems';
+import { useProblems } from '../lib/useProblems';
 import { useAppStore } from '../store/useAppStore';
 import ProblemCard from '../components/ProblemCard';
 import { getContinueSolving, getDueReviews, getStats } from '../lib/progressSelectors';
 
 const Dashboard = () => {
   const progress = useAppStore((state) => state.progress);
+  const problems = useProblems();
   const due = getDueReviews(problems, progress);
   const continueList = getContinueSolving(problems, progress);
   const stats = getStats(problems, progress);

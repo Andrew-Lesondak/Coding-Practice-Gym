@@ -6,7 +6,7 @@ describe('Settings page', () => {
   beforeEach(() => {
     useAppStore.setState({
       progress: { problems: {} },
-      settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true }
+      settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false }
     });
   });
 

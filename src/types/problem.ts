@@ -40,6 +40,12 @@ export type Problem = {
   metadata: ProblemMetadata;
 };
 
+export type ProblemPack = {
+  problems: Problem[];
+  updatedAt: string;
+  version: number;
+};
+
 export type Step = {
   index: number;
   title: string;

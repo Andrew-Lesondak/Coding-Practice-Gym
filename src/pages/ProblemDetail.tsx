@@ -5,7 +5,7 @@ import Tabs from '../components/Tabs';
 import StepList from '../components/StepList';
 import CodeEditor from '../components/CodeEditor';
 import TestResults from '../components/TestResults';
-import { problems } from '../data/problems';
+import { useProblems } from '../lib/useProblems';
 import { computeStepCompletion, findLockedRegion, getFirstIncompleteStep, parseSteps } from '../lib/guidedStub';
 import { runInWorker, RunResponse } from '../lib/runnerClient';
 import { updateSchedule } from '../lib/spacedRepetition';
@@ -39,6 +39,7 @@ const getStubForMode = (stub: string, languageMode: 'ts' | 'js', hintLevel: numb
 
 const ProblemDetail = () => {
   const { id } = useParams();
+  const problems = useProblems();
   const problem = problems.find((item) => item.id === id);
   const [activeTab, setActiveTab] = useState('statement');
   const [code, setCode] = useState('');
