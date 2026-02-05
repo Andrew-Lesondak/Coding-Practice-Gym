@@ -1,4 +1,5 @@
 import { Step, TodoRegion } from '../types/problem';
+import { StepStatus } from '../types/progress';
 
 const stepRegex = /^\s*\/\/\s*Step\s+(\d+)\s*:\s*(.+)$/gm;
 const todoStartRegex = /\/\/\s*TODO\(step\s+(\d+)\s+start\)\s*\n/g;
@@ -43,31 +44,49 @@ export const parseTodoRegions = (code: string): TodoRegion[] => {
 
 export const normalizeRegion = (value: string) => value.replace(/\s+/g, ' ').trim();
 
+const stripComments = (region: string) => {
+  const withoutBlockComments = region.replace(/\/\*[\s\S]*?\*\//g, '');
+  return withoutBlockComments.replace(/\/\/.*$/gm, '');
+};
+
+export const regionHasCode = (region: string) => {
+  const withoutComments = stripComments(region);
+  return /\S/.test(withoutComments);
+};
+
 export const computeStepCompletion = (
   currentCode: string,
   originalStub: string
-): Record<number, boolean> => {
+): Record<number, StepStatus> => {
   const originalRegions = parseTodoRegions(originalStub);
   const currentRegions = parseTodoRegions(currentCode);
-  const completion: Record<number, boolean> = {};
+  const completion: Record<number, StepStatus> = {};
 
   for (const region of originalRegions) {
     const current = currentRegions.find((item) => item.stepIndex === region.stepIndex);
     if (!current) {
-      completion[region.stepIndex] = false;
+      completion[region.stepIndex] = 'not_started';
       continue;
     }
     const originalNorm = normalizeRegion(region.originalContent);
     const currentNorm = normalizeRegion(current.originalContent);
-    completion[region.stepIndex] = originalNorm !== currentNorm;
+    const originalHasCode = regionHasCode(region.originalContent);
+    const currentHasCode = regionHasCode(current.originalContent);
+    if (currentHasCode) {
+      completion[region.stepIndex] = 'completed';
+    } else if (originalHasCode && originalNorm !== currentNorm) {
+      completion[region.stepIndex] = 'in_progress';
+    } else {
+      completion[region.stepIndex] = 'not_started';
+    }
   }
 
   return completion;
 };
 
-export const getFirstIncompleteStep = (completion: Record<number, boolean>, steps: Step[]) => {
+export const getFirstIncompleteStep = (completion: Record<number, StepStatus>, steps: Step[]) => {
   for (const step of steps) {
-    if (!completion[step.index]) {
+    if (completion[step.index] !== 'completed') {
       return step.index;
     }
   }

@@ -15,7 +15,8 @@ const createDefaultProgress = (): ProblemProgress => ({
   passes: 0,
   stepCompletion: {},
   reviewIntervalDays: 2,
-  easeFactor: 2.3
+  easeFactor: 2.3,
+  explanationHistory: []
 });
 
 type AppState = {
@@ -23,11 +24,15 @@ type AppState = {
   settings: SettingsState;
   overlayVersion: number;
   updateProblemProgress: (problemId: string, patch: Partial<ProblemProgress>) => void;
-  setStepCompletion: (problemId: string, stepIndex: number, completed: boolean) => void;
+  setStepCompletion: (problemId: string, stepIndex: number, status: StepCompletion[number]) => void;
   resetProblem: (problemId: string) => void;
   updateSettings: (patch: Partial<SettingsState>) => void;
   toggleOverlay: (enabled: boolean) => void;
   bumpOverlayVersion: () => void;
+  saveExplanation: (
+    problemId: string,
+    explanation: { pattern: string; why: string; complexity: string }
+  ) => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -48,7 +53,7 @@ export const useAppStore = create<AppState>()(
             }
           };
         }),
-      setStepCompletion: (problemId, stepIndex, completed) =>
+      setStepCompletion: (problemId, stepIndex, status) =>
         set((state) => {
           const current = state.progress.problems[problemId] ?? createDefaultProgress();
           return {
@@ -59,7 +64,7 @@ export const useAppStore = create<AppState>()(
                   ...current,
                   stepCompletion: {
                     ...current.stepCompletion,
-                    [stepIndex]: completed
+                    [stepIndex]: status
                   }
                 }
               }
@@ -87,14 +92,57 @@ export const useAppStore = create<AppState>()(
       bumpOverlayVersion: () =>
         set((state) => ({
           overlayVersion: state.overlayVersion + 1
-        }))
+        })),
+      saveExplanation: (problemId, explanation) =>
+        set((state) => {
+          const current = state.progress.problems[problemId] ?? createDefaultProgress();
+          const updatedAt = new Date().toISOString();
+          const existing = current.explanation;
+          const history = current.explanationHistory ?? [];
+          const nextHistory = existing ? [...history, existing] : history;
+          return {
+            progress: {
+              problems: {
+                ...state.progress.problems,
+                [problemId]: {
+                  ...current,
+                  explanation: { ...explanation, updatedAt },
+                  explanationHistory: nextHistory
+                }
+              }
+            }
+          };
+        })
     }),
     {
       name: 'dsa-gym-store',
-      version: 1
+      version: 2,
+      migrate: (state, version) => {
+        if (version === 1) {
+          const next = state as AppState;
+          Object.values(next.progress.problems).forEach((progress) => {
+            if (!progress.explanationHistory) {
+              progress.explanationHistory = [];
+            }
+          });
+          if (typeof next.settings.overlayEnabled !== 'boolean') {
+            next.settings.overlayEnabled = getOverlayEnabled();
+          }
+          return next;
+        }
+        return state as AppState;
+      }
     }
   )
 );
+
+export const migrateStore = (state: unknown, version: number) => {
+  const options = (useAppStore as any).persist?.getOptions?.();
+  if (options?.migrate) {
+    return options.migrate(state, version);
+  }
+  return state;
+};
 
 export const getProblemProgress = (state: ProgressState, problemId: string): ProblemProgress => {
   return state.problems[problemId] ?? createDefaultProgress();

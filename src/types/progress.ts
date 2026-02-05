@@ -1,5 +1,7 @@
+export type StepStatus = 'not_started' | 'in_progress' | 'completed';
+
 export type StepCompletion = {
-  [stepIndex: number]: boolean;
+  [stepIndex: number]: StepStatus;
 };
 
 export type ProblemProgress = {
@@ -15,6 +17,18 @@ export type ProblemProgress = {
     difficulty: number;
     confidence: number;
   };
+  explanation?: {
+    pattern: string;
+    why: string;
+    complexity: string;
+    updatedAt: string;
+  };
+  explanationHistory?: {
+    pattern: string;
+    why: string;
+    complexity: string;
+    updatedAt: string;
+  }[];
 };
 
 export type ProgressState = {

@@ -18,6 +18,7 @@ const ProblemCard = ({
 }) => {
   const completed = progress?.passes && progress.passes > 0;
   const attempts = progress?.attempts ?? 0;
+  const hasExplanation = Boolean(progress?.explanation);
   return (
     <Link
       to={`/problem/${problem.id}`}
@@ -35,6 +36,16 @@ const ProblemCard = ({
       <div className="mt-4 flex items-center justify-between text-xs text-mist-300">
         <span>{completed ? 'Completed' : attempts > 0 ? 'In progress' : 'Not started'}</span>
         <span>{attempts} attempts</span>
+      </div>
+      <div className="mt-3">
+        <span
+          className={clsx(
+            'rounded-full px-3 py-1 text-[10px] font-semibold',
+            hasExplanation ? 'bg-emerald-400/15 text-emerald-300' : 'bg-white/10 text-mist-300'
+          )}
+        >
+          {hasExplanation ? 'Has explanation' : 'Missing explanation'}
+        </span>
       </div>
     </Link>
   );

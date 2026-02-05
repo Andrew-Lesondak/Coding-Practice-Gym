@@ -2,6 +2,16 @@
 
 A production-ready React + TypeScript app for guided DSA practice. The experience centers on guided completion, spaced repetition, and a fast feedback loop.
 
+## Learning loop (Explain it back)
+
+After you pass a problem, the app prompts you to explain:
+
+- Pattern used
+- Why it works (2–4 sentences)
+- Time/space complexity
+
+This explanation is stored per problem and shown during reviews. After a re-solve, you can compare your previous explanation to the new one and update it if it improved.
+
 ## Run locally
 
 ```bash

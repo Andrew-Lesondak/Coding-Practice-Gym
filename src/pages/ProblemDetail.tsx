@@ -12,6 +12,7 @@ import { updateSchedule } from '../lib/spacedRepetition';
 import { useAppStore, getProblemProgress } from '../store/useAppStore';
 import { toJavaScriptStub } from '../lib/codeTransform';
 import { stableStringify } from '../lib/runnerUtils';
+import { StepStatus } from '../types/progress';
 
 const tabs = [
   { id: 'statement', label: 'Statement' },
@@ -44,8 +45,14 @@ const ProblemDetail = () => {
   const [activeTab, setActiveTab] = useState('statement');
   const [code, setCode] = useState('');
   const [runResult, setRunResult] = useState<RunResponse | undefined>();
+  const [completion, setCompletion] = useState<Record<number, StepStatus>>({});
   const [isRunning, setIsRunning] = useState(false);
   const [showRating, setShowRating] = useState(false);
+  const [showExplainModal, setShowExplainModal] = useState(false);
+  const [patternText, setPatternText] = useState('');
+  const [whyText, setWhyText] = useState('');
+  const [complexityText, setComplexityText] = useState('');
+  const [showCompare, setShowCompare] = useState(false);
   const [difficultyRating, setDifficultyRating] = useState(3);
   const [confidenceRating, setConfidenceRating] = useState(3);
   const prevCodeRef = useRef('');
@@ -55,6 +62,7 @@ const ProblemDetail = () => {
   const updateProgress = useAppStore((state) => state.updateProblemProgress);
   const setStepCompletion = useAppStore((state) => state.setStepCompletion);
   const resetProblem = useAppStore((state) => state.resetProblem);
+  const saveExplanation = useAppStore((state) => state.saveExplanation);
 
   const steps = useMemo(() => (problem ? parseSteps(problem.guidedStub) : []), [problem]);
   const problemProgress = problem ? getProblemProgress(progress, problem.id) : undefined;
@@ -66,14 +74,27 @@ const ProblemDetail = () => {
     const stubWithHints = getStubForMode(problem.guidedStub, settings.languageMode, settings.hintLevel);
     setCode(saved ?? stubWithHints);
     prevCodeRef.current = saved ?? stubWithHints;
-  }, [problem, settings.hintLevel, settings.languageMode]);
+    if (problemProgress?.explanation) {
+      setPatternText(problemProgress.explanation.pattern);
+      setWhyText(problemProgress.explanation.why);
+      setComplexityText(problemProgress.explanation.complexity);
+    } else {
+      setPatternText('');
+      setWhyText('');
+      setComplexityText('');
+    }
+  }, [problem, settings.hintLevel, settings.languageMode, problemProgress?.explanation]);
 
   useEffect(() => {
     if (!problem) return;
-    const completion = computeStepCompletion(code, problem.guidedStub);
-    Object.entries(completion).forEach(([stepIndex, completed]) => {
-      setStepCompletion(problem.id, Number(stepIndex), completed);
-    });
+    const nextCompletion = computeStepCompletion(code, problem.guidedStub);
+    setCompletion(nextCompletion);
+    const timer = window.setTimeout(() => {
+      Object.entries(nextCompletion).forEach(([stepIndex, status]) => {
+        setStepCompletion(problem.id, Number(stepIndex), status);
+      });
+    }, 200);
+    return () => window.clearTimeout(timer);
   }, [code, problem, setStepCompletion]);
 
   if (!problem || !problemProgress) {
@@ -87,7 +108,6 @@ const ProblemDetail = () => {
     );
   }
 
-  const completion = problemProgress.stepCompletion;
   const activeStep = getFirstIncompleteStep(completion, steps);
 
   const onCodeChange = (next: string) => {
@@ -127,6 +147,7 @@ const ProblemDetail = () => {
         lastPassedAt: new Date().toISOString()
       });
       setShowRating(true);
+      setShowExplainModal(true);
       setActiveTab('review');
     }
   };
@@ -167,6 +188,18 @@ const ProblemDetail = () => {
     updateProgress(problem.id, updated);
     setShowRating(false);
   };
+
+  const submitExplanation = () => {
+    saveExplanation(problem.id, {
+      pattern: patternText.trim(),
+      why: whyText.trim(),
+      complexity: complexityText.trim()
+    });
+    setShowExplainModal(false);
+  };
+
+  const isDueForReview =
+    Boolean(problemProgress.nextReviewAt) && new Date(problemProgress.nextReviewAt as string) <= new Date();
 
   return (
     <div className="space-y-6">
@@ -230,6 +263,17 @@ const ProblemDetail = () => {
       {activeTab === 'solve' && (
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-4">
+            {isDueForReview && problemProgress.explanation && (
+              <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4 text-sm text-mist-200">
+                <p className="font-semibold text-ember-300">Due for review: your last explanation</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-mist-300">Pattern</p>
+                <p>{problemProgress.explanation.pattern}</p>
+                <p className="mt-3 text-xs uppercase tracking-[0.2em] text-mist-300">Why it works</p>
+                <p>{problemProgress.explanation.why}</p>
+                <p className="mt-3 text-xs uppercase tracking-[0.2em] text-mist-300">Complexity</p>
+                <p>{problemProgress.explanation.complexity}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-mist-300">Guided stub</p>
@@ -344,8 +388,101 @@ const ProblemDetail = () => {
                 </button>
               </div>
             )}
+
+            {problemProgress.explanation && (problemProgress.explanationHistory?.length ?? 0) > 0 && (
+              <div className="mt-6 space-y-3">
+                <button
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200"
+                  onClick={() => setShowCompare((prev) => !prev)}
+                >
+                  {showCompare ? 'Hide' : 'Compare my last explanation'}
+                </button>
+                {showCompare && (
+                  <div className="space-y-4 text-sm text-mist-200">
+                    <div className="rounded-xl border border-white/10 p-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Previous</p>
+                      <p className="mt-2">{problemProgress.explanationHistory?.slice(-1)[0]?.pattern}</p>
+                      <p className="mt-2">{problemProgress.explanationHistory?.slice(-1)[0]?.why}</p>
+                      <p className="mt-2">{problemProgress.explanationHistory?.slice(-1)[0]?.complexity}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 p-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Current</p>
+                      <p className="mt-2">{problemProgress.explanation?.pattern}</p>
+                      <p className="mt-2">{problemProgress.explanation?.why}</p>
+                      <p className="mt-2">{problemProgress.explanation?.complexity}</p>
+                    </div>
+                    <p className="text-xs text-mist-300">Update your explanation if it improved.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
+      )}
+
+      {showExplainModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6">
+          <div className="glass w-full max-w-xl rounded-2xl p-6">
+            <h3 className="font-display text-xl font-semibold">Explain it back</h3>
+            <p className="mt-2 text-sm text-mist-200">
+              Capture the pattern and why the solution works to lock in retention.
+            </p>
+            <div className="mt-4 space-y-4 text-sm">
+              <label className="block">
+                Pattern used
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2"
+                  value={patternText}
+                  onChange={(event) => setPatternText(event.target.value)}
+                  placeholder={`e.g. ${problem.patterns.join(', ')}`}
+                />
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  {problem.patterns.map((pattern) => (
+                    <button
+                      key={pattern}
+                      className="rounded-full border border-white/15 px-3 py-1 text-mist-200"
+                      onClick={() => setPatternText(pattern)}
+                    >
+                      {pattern}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="block">
+                Why it works (2-4 sentences)
+                <textarea
+                  className="mt-2 h-24 w-full rounded-xl border border-white/10 bg-transparent p-2"
+                  value={whyText}
+                  onChange={(event) => setWhyText(event.target.value)}
+                />
+              </label>
+              <label className="block">
+                Complexity (time / space)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2"
+                  value={complexityText}
+                  onChange={(event) => setComplexityText(event.target.value)}
+                  placeholder="O(n) time, O(1) space"
+                />
+              </label>
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200"
+                onClick={() => setShowExplainModal(false)}
+              >
+                Close
+              </button>
+              <button
+                className="rounded-full bg-ember-500 px-4 py-2 text-xs font-semibold text-ink-950"
+                onClick={submitExplanation}
+                disabled={!patternText.trim() || !whyText.trim() || !complexityText.trim()}
+              >
+                Save explanation
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

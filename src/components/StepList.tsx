@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { Step } from '../types/problem';
+import { StepStatus } from '../types/progress';
 
 const StepList = ({
   steps,
@@ -7,13 +8,13 @@ const StepList = ({
   activeStep
 }: {
   steps: Step[];
-  completion: Record<number, boolean>;
+  completion: Record<number, StepStatus>;
   activeStep: number;
 }) => {
   return (
     <div className="space-y-3">
       {steps.map((step) => {
-        const done = completion[step.index];
+        const status = completion[step.index] ?? 'not_started';
         return (
           <div
             key={step.index}
@@ -26,8 +27,17 @@ const StepList = ({
           >
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">Step {step.index}</p>
-              <span className={clsx('text-xs', done ? 'text-emerald-300' : 'text-mist-300')}>
-                {done ? 'Complete' : 'Pending'}
+              <span
+                className={clsx(
+                  'text-xs',
+                  status === 'completed'
+                    ? 'text-emerald-300'
+                    : status === 'in_progress'
+                    ? 'text-amber-300'
+                    : 'text-mist-300'
+                )}
+              >
+                {status === 'completed' ? 'Completed' : status === 'in_progress' ? 'In progress' : 'Not started'}
               </span>
             </div>
             <p className="text-xs text-mist-200">{step.title}</p>
