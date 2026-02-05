@@ -5,6 +5,7 @@ import { runInWorker } from './runnerClient';
 import { parseDesignSteps, parseTemplateRegions } from './systemDesignStub';
 import { SystemDesignPrompt } from '../types/systemDesign';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
+import { systemDesignPrompts } from '../data/systemDesignPrompts';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -124,8 +125,34 @@ export const validateDrill = (drill: SystemDesignDrill): ValidationMessage[] => 
       messages.push({ type: 'error', message: `Starter template missing step ${step}.` });
     }
   });
+  stepIds.forEach((step) => {
+    if (!drill.stepsIncluded.includes(step)) {
+      messages.push({ type: 'error', message: `Starter template includes step ${step} not in stepsIncluded.` });
+    }
+  });
   if (drill.rubricSubset.categoryIds.length === 0 || drill.rubricSubset.itemIds.length === 0) {
     messages.push({ type: 'error', message: 'Drill rubric subset must include categories and itemIds.' });
+  }
+  if (drill.relatedPromptId) {
+    const prompt = systemDesignPrompts.find((item) => item.id === drill.relatedPromptId);
+    if (!prompt) {
+      messages.push({ type: 'warning', message: 'Related prompt ID not found in built-in pack.' });
+    } else {
+      const categoryIds = new Set(prompt.rubric.categories.map((category) => category.id));
+      const itemIds = new Set(
+        prompt.rubric.categories.flatMap((category) => category.items.map((item) => item.id))
+      );
+      drill.rubricSubset.categoryIds.forEach((id) => {
+        if (!categoryIds.has(id)) {
+          messages.push({ type: 'error', message: `Rubric category id ${id} not found in related prompt.` });
+        }
+      });
+      drill.rubricSubset.itemIds.forEach((id) => {
+        if (!itemIds.has(id)) {
+          messages.push({ type: 'error', message: `Rubric item id ${id} not found in related prompt.` });
+        }
+      });
+    }
   }
   return messages;
 };

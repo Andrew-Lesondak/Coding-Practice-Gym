@@ -50,6 +50,10 @@ Drills are short, time-boxed exercises focused on 1–3 steps of system design. 
 - Each drill uses a starter template with `TEMPLATE_START/END` markers
 - Rubric scoring is user-confirmed (suggestions are assist-only)
 
+## Mock Interview Mode
+
+Mock interviews simulate a 45-minute system design interview using a fixed sequence of drills followed by a full design and reflection. Sessions are stored locally and can be reviewed after completion.
+
 ## Run locally
 
 ```bash

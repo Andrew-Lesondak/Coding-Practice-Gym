@@ -11,6 +11,8 @@ import SystemDesignCatalog from '../pages/SystemDesignCatalog';
 import SystemDesignDetail from '../pages/SystemDesignDetail';
 import SystemDesignDrillsDashboard from '../pages/SystemDesignDrillsDashboard';
 import SystemDesignDrillDetail from '../pages/SystemDesignDrillDetail';
+import SystemDesignMockDashboard from '../pages/SystemDesignMockDashboard';
+import SystemDesignMockSession from '../pages/SystemDesignMockSession';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 
@@ -52,6 +54,8 @@ const App = () => {
         <Route path="/system-design/:id" element={<SystemDesignDetail />} />
         <Route path="/system-design/drills" element={<SystemDesignDrillsDashboard />} />
         <Route path="/system-design/drills/:id" element={<SystemDesignDrillDetail />} />
+        <Route path="/system-design/mock" element={<SystemDesignMockDashboard />} />
+        <Route path="/system-design/mock/:sessionId" element={<SystemDesignMockSession />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />
