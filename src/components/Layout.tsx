@@ -39,6 +39,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
             <NavLink className={navLink} to="/settings">
               Settings
             </NavLink>
+            <NavLink className={navLink} to="/adaptive">
+              Adaptive
+            </NavLink>
             <NavLink className={navLink} to="/analytics">
               Analytics
             </NavLink>

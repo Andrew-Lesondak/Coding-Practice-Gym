@@ -58,6 +58,16 @@ Mock interviews simulate a 45-minute system design interview using a fixed seque
 
 DSA Speed Drills provide short, focused exercises (3–10 minutes) using existing problems. Drills are partial: pattern recognition, core loop, invariant maintenance, or bug-fix. They run visible tests only and never replace guided stubs.
 
+## Adaptive Interview Paths
+
+Adaptive Interview Paths generate deterministic, explainable session plans that mix reviews, drills, and timed blocks based on spaced repetition due items, weaknesses, speed gaps, transfer gaps, and confidence calibration.
+
+- Route: `/adaptive`
+- Session runner: `/adaptive/session/:sessionId`
+- Plans are previewable and editable before starting.
+- Each block includes a one-sentence rationale derived from stored signals.
+- Timed blocks enforce timers and auto-advance on timeout.
+
 ## Run locally
 
 ```bash
