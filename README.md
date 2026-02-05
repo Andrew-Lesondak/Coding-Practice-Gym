@@ -78,10 +78,12 @@ The hint level slider in Settings reveals hints up to the selected level. Keep h
 - TypeScript is transpiled in-browser using the `typescript` package.
 - Inputs are parsed as JSON arrays.
 - For linked list / binary tree problems, the worker converts array inputs into in-memory nodes and normalizes outputs back to arrays for comparison.
+ - Output diffs use stable JSON-like stringification (sorted keys). NaN is supported; `-0` and `0` are treated as equivalent. Date objects are not supported in v1.
 
 Limitations:
 - Only synchronous functions are supported in v1.
 - Access to `fetch` and `XMLHttpRequest` is disabled in the worker.
+ - DOM globals are shadowed inside the sandboxed user function scope.
 
 ## Adding new problems
 

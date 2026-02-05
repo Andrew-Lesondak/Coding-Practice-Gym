@@ -17,10 +17,13 @@ export type RunResponse = {
     passed: boolean;
     expected: unknown;
     actual: unknown;
+    input: unknown;
+    error?: string;
   }[];
   logs: string[];
   error?: string;
   timedOut?: boolean;
+  errorType?: 'SYNTAX_ERROR' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'HARNESS_ERROR';
 };
 
 export const runInWorker = (payload: RunPayload, timeoutMs = 1000): Promise<RunResponse> => {
@@ -30,7 +33,14 @@ export const runInWorker = (payload: RunPayload, timeoutMs = 1000): Promise<RunR
 
     const timer = setTimeout(() => {
       worker.terminate();
-      resolve({ ok: false, results: [], logs: [], timedOut: true, error: 'Execution timed out.' });
+      resolve({
+        ok: false,
+        results: [],
+        logs: [],
+        timedOut: true,
+        error: 'Execution timed out.',
+        errorType: 'TIMEOUT'
+      });
     }, timeoutMs);
 
     worker.onmessage = (event: MessageEvent) => {
@@ -43,7 +53,8 @@ export const runInWorker = (payload: RunPayload, timeoutMs = 1000): Promise<RunR
         ok: event.data.ok,
         results: event.data.results,
         logs: event.data.logs,
-        error: event.data.error
+        error: event.data.error,
+        errorType: event.data.errorType
       });
     };
 

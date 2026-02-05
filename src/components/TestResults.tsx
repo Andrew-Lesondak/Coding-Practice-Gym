@@ -1,13 +1,6 @@
 import clsx from 'clsx';
 import { RunResponse } from '../lib/runnerClient';
-
-const formatValue = (value: unknown) => {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-};
+import { stableStringify } from '../lib/runnerUtils';
 
 const TestResults = ({ result }: { result?: RunResponse }) => {
   if (!result) {
@@ -29,21 +22,23 @@ const TestResults = ({ result }: { result?: RunResponse }) => {
               {item.passed ? 'Passed' : 'Failed'}
             </span>
           </div>
-          {!item.passed && (
-            <div className="mt-2 text-xs text-mist-200">
-              <p>Expected: {formatValue(item.expected)}</p>
-              <p>Actual: {formatValue(item.actual)}</p>
-            </div>
-          )}
+          <div className="mt-2 text-xs text-mist-200 space-y-1">
+            <p>Input: {stableStringify(item.input)}</p>
+            <p>Expected: {stableStringify(item.expected)}</p>
+            <p>Actual: {stableStringify(item.actual)}</p>
+            {item.error && <p className="text-rose-300">Error: {item.error}</p>}
+          </div>
         </div>
       ))}
       {result.logs.length > 0 && (
-        <div className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
-          <p className="font-semibold text-mist-100">Console</p>
-          {result.logs.map((line, index) => (
-            <p key={`${line}-${index}`}>{line}</p>
-          ))}
-        </div>
+        <details className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
+          <summary className="cursor-pointer font-semibold text-mist-100">Console output</summary>
+          <div className="mt-2 space-y-1">
+            {result.logs.map((line, index) => (
+              <p key={`${line}-${index}`}>{line}</p>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

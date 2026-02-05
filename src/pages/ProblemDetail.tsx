@@ -11,6 +11,7 @@ import { runInWorker, RunResponse } from '../lib/runnerClient';
 import { updateSchedule } from '../lib/spacedRepetition';
 import { useAppStore, getProblemProgress } from '../store/useAppStore';
 import { toJavaScriptStub } from '../lib/codeTransform';
+import { stableStringify } from '../lib/runnerUtils';
 
 const tabs = [
   { id: 'statement', label: 'Statement' },
@@ -129,6 +130,28 @@ const ProblemDetail = () => {
     }
   };
 
+  const copyFailureReport = async () => {
+    if (!runResult) return;
+    const lines: string[] = [];
+    lines.push(`${problem.title} - ${runResult.ok ? 'All tests passed' : 'Test failures'}`);
+    if (runResult.errorType) lines.push(`ErrorType: ${runResult.errorType}`);
+    if (runResult.error) lines.push(`Error: ${runResult.error}`);
+    runResult.results.forEach((result) => {
+      if (!result.passed) {
+        lines.push(`Test: ${result.name}`);
+        lines.push(`Input: ${stableStringify(result.input)}`);
+        lines.push(`Expected: ${stableStringify(result.expected)}`);
+        lines.push(`Actual: ${stableStringify(result.actual)}`);
+        if (result.error) lines.push(`Error: ${result.error}`);
+      }
+    });
+    if (runResult.logs.length > 0) {
+      lines.push('Console:');
+      lines.push(...runResult.logs);
+    }
+    await navigator.clipboard.writeText(lines.join('\\n'));
+  };
+
   const handleReset = () => {
     resetProblem(problem.id);
     const resetCode = getStubForMode(problem.guidedStub, settings.languageMode, settings.hintLevel);
@@ -230,7 +253,19 @@ const ProblemDetail = () => {
             </div>
             <CodeEditor value={code} language={settings.languageMode === 'ts' ? 'typescript' : 'javascript'} onChange={onCodeChange} />
             <div className="rounded-2xl border border-white/10 p-4">
-              <TestResults result={runResult} />
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Run output</p>
+                <button
+                  className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                  onClick={copyFailureReport}
+                  disabled={!runResult}
+                >
+                  Copy failure report
+                </button>
+              </div>
+              <div className="mt-3">
+                <TestResults result={runResult} />
+              </div>
             </div>
           </div>
           <div className="space-y-4">

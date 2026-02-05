@@ -1,5 +1,6 @@
 import type { TestCase } from '../types/problem';
 import ts from 'typescript';
+import { classifyError, deepEqual, ErrorType } from '../lib/runnerUtils';
 
 type RunMessage = {
   id: string;
@@ -14,11 +15,14 @@ type RunMessage = {
 type RunResult = {
   id: string;
   ok: boolean;
+  errorType?: ErrorType;
   results: {
     name: string;
     passed: boolean;
     expected: unknown;
     actual: unknown;
+    input: unknown;
+    error?: string;
   }[];
   logs: string[];
   error?: string;
@@ -31,30 +35,9 @@ const serialize = (value: unknown) => {
     return String(value);
   }
 };
-
-const deepEqual = (a: unknown, b: unknown): boolean => {
-  if (Object.is(a, b)) {
-    return true;
-  }
-  if (typeof a !== typeof b) {
-    return false;
-  }
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) {
-      return false;
-    }
-    return a.every((item, index) => deepEqual(item, b[index]));
-  }
-  if (a && b && typeof a === 'object' && typeof b === 'object') {
-    const aKeys = Object.keys(a as Record<string, unknown>);
-    const bKeys = Object.keys(b as Record<string, unknown>);
-    if (aKeys.length !== bKeys.length) {
-      return false;
-    }
-    return aKeys.every((key) => deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]));
-  }
-  return false;
-};
+const MAX_LOG_LINES = 50;
+const MAX_LOG_CHARS = 2000;
+const MAX_LOG_NOTICE = '[console output truncated]';
 
 type ListNode = { val: number; next: ListNode | null };
 type TreeNode = { val: number; left: TreeNode | null; right: TreeNode | null };
@@ -148,10 +131,28 @@ self.onmessage = (event: MessageEvent<RunMessage>) => {
 
   const originalConsole = { ...console };
   console.log = (...args: unknown[]) => {
-    logs.push(args.map(serialize).join(' '));
+    if (logs.length >= MAX_LOG_LINES) {
+      if (logs[logs.length - 1] !== MAX_LOG_NOTICE) {
+        logs.push(MAX_LOG_NOTICE);
+      }
+      return;
+    }
+    const line = args.map(serialize).join(' ');
+    const currentLength = logs.reduce((sum, item) => sum + item.length, 0);
+    if (currentLength + line.length > MAX_LOG_CHARS) {
+      logs.push(MAX_LOG_NOTICE);
+      return;
+    }
+    logs.push(line);
   };
 
   try {
+    (self as any).importScripts = undefined;
+    (self as any).fetch = undefined;
+    (self as any).XMLHttpRequest = undefined;
+    (self as any).WebSocket = undefined;
+    (self as any).navigator = undefined;
+    (self as any).location = undefined;
     if (!(self as any).process) {
       (self as any).process = { env: { NODE_ENV: 'production' }, versions: {} };
     }
@@ -161,8 +162,6 @@ self.onmessage = (event: MessageEvent<RunMessage>) => {
     if (!(self as any).process.versions.pnp) {
       (self as any).process.versions.pnp = '0';
     }
-    (self as any).fetch = undefined;
-    (self as any).XMLHttpRequest = undefined;
 
     const jsCode =
       language === 'ts'
@@ -171,27 +170,67 @@ self.onmessage = (event: MessageEvent<RunMessage>) => {
           }).outputText
         : code;
 
+    const sandboxHeader = [
+      '"use strict";',
+      'const window = undefined;',
+      'const document = undefined;',
+      'const globalThis = undefined;',
+      'const self = undefined;',
+      'const postMessage = undefined;',
+      'const Function = undefined;',
+      'const eval = undefined;',
+      'const importScripts = undefined;',
+      'const fetch = undefined;',
+      'const XMLHttpRequest = undefined;',
+      'const WebSocket = undefined;',
+      'const navigator = undefined;',
+      'const location = undefined;'
+    ].join('\n');
+
     const userFn = new Function(
-      `"use strict";\n${jsCode}\nreturn typeof ${functionName} === 'function' ? ${functionName} : undefined;`
+      `${sandboxHeader}\n${jsCode}\nreturn typeof ${functionName} === 'function' ? ${functionName} : undefined;`
     )();
 
     if (typeof userFn !== 'function') {
-      throw new Error(`Function \"${functionName}\" was not found. Make sure it is declared as a function.`);
+      const error: Error & { type?: ErrorType } = new Error(
+        `Function \"${functionName}\" was not found. Make sure it is declared as a function.`
+      );
+      error.type = 'HARNESS_ERROR';
+      throw error;
     }
 
     const results = tests.map((test) => {
-      const args = JSON.parse(test.input) as unknown[];
-      const expected = JSON.parse(test.expected) as unknown;
+      let args: unknown[];
+      let expected: unknown;
+      try {
+        args = JSON.parse(test.input) as unknown[];
+        expected = JSON.parse(test.expected) as unknown;
+      } catch (error) {
+        const harnessError: Error & { type?: ErrorType } = new Error(
+          `Failed to parse test input/expected for ${test.name}`
+        );
+        harnessError.type = 'HARNESS_ERROR';
+        throw harnessError;
+      }
       const preparedArgs = prepareArgs(args, inputFormat);
-      const actualRaw = userFn(...preparedArgs);
-      const actual = normalizeOutput(actualRaw, outputFormat);
+      let actual: unknown;
+      let errorMessage: string | undefined;
+      try {
+        const actualRaw = userFn(...preparedArgs);
+        actual = normalizeOutput(actualRaw, outputFormat);
+      } catch (error) {
+        errorMessage = error instanceof Error ? error.message : String(error);
+        actual = undefined;
+      }
       const expectedNormalized = normalizeExpected(expected, outputFormat);
-      const passed = deepEqual(actual, expectedNormalized);
+      const passed = errorMessage ? false : deepEqual(actual, expectedNormalized);
       return {
         name: test.name,
         passed,
         expected: expectedNormalized,
-        actual
+        actual,
+        input: args,
+        error: errorMessage
       };
     });
 
@@ -205,9 +244,12 @@ self.onmessage = (event: MessageEvent<RunMessage>) => {
     };
     self.postMessage(payload);
   } catch (error) {
+    const errorType: ErrorType =
+      (error as Error & { type?: ErrorType }).type ?? classifyError(error);
     const payload: RunResult = {
       id,
       ok: false,
+      errorType,
       results: [],
       logs,
       error: error instanceof Error ? error.message : String(error)
