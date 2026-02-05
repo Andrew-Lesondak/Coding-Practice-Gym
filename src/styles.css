@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: "Work Sans", system-ui, sans-serif;
+}
+
+.code-panel {
+  background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.15), transparent 50%),
+    radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.15), transparent 45%),
+    #0b0d12;
+}
+
+.glass {
+  background: rgba(18, 22, 34, 0.65);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.tab-active {
+  border-bottom: 2px solid #f97316;
+  color: #f97316;
+}
