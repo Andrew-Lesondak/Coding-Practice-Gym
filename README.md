@@ -42,6 +42,14 @@ After completing a prompt, the app asks for:
 
 This explanation is shown during future reviews.
 
+## System Design Drills
+
+Drills are short, time-boxed exercises focused on 1–3 steps of system design. They reuse the same step markers and rubric logic but keep the scope small to build speed and recall.
+
+- Routes: `/system-design/drills` and `/system-design/drills/:id`
+- Each drill uses a starter template with `TEMPLATE_START/END` markers
+- Rubric scoring is user-confirmed (suggestions are assist-only)
+
 ## Run locally
 
 ```bash

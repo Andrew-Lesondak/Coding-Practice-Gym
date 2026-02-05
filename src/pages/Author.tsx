@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Problem, TestCase } from '../types/problem';
 import { SystemDesignPrompt } from '../types/systemDesign';
+import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { useAppStore } from '../store/useAppStore';
 import { loadOverlayPack, saveOverlayPack, OverlayPack } from '../lib/problemPack';
 import {
@@ -10,7 +11,8 @@ import {
   validateStepMarkers,
   validateTests,
   ValidationMessage,
-  validateRubric
+  validateRubric,
+  validateDrill
 } from '../lib/authorValidation';
 import { stableStringify } from '../lib/runnerUtils';
 
@@ -55,9 +57,22 @@ const defaultSystemDesignPrompt = (): SystemDesignPrompt => ({
 });
 
 const Author = () => {
-  const [mode, setMode] = useState<'dsa' | 'system'>('dsa');
+  const [mode, setMode] = useState<'dsa' | 'system' | 'drill'>('dsa');
   const [draft, setDraft] = useState<Problem>(defaultProblem());
   const [designDraft, setDesignDraft] = useState<SystemDesignPrompt>(defaultSystemDesignPrompt());
+  const [drillDraft, setDrillDraft] = useState<SystemDesignDrill>({
+    id: '',
+    title: '',
+    type: 'requirements',
+    difficulty: 'easy',
+    promptMarkdown: '',
+    stepsIncluded: [1],
+    starterTemplateMarkdown: '',
+    rubricSubset: { categoryIds: [], itemIds: [] },
+    referenceNotes: [],
+    timeLimitMinutes: 5,
+    recallQuestions: []
+  });
   const [messages, setMessages] = useState<ValidationMessage[]>([]);
   const [isValidatingRef, setIsValidatingRef] = useState(false);
   const [refMessages, setRefMessages] = useState<ValidationMessage[]>([]);
@@ -72,9 +87,12 @@ const Author = () => {
       msgs.push(...validateStepMarkers(draft.guidedStub));
       msgs.push(...validateTests([...draft.tests.visible, ...draft.tests.hidden]));
       msgs.push(...validateGuidedStubCompile(draft.guidedStub));
-    } else {
+    } else if (mode === 'system') {
       msgs.push(...validateDesignStepMarkers(designDraft.guidedDesignStubMarkdown));
       msgs.push(...validateRubric(designDraft.rubric));
+    } else {
+      msgs.push(...validateDesignStepMarkers(drillDraft.starterTemplateMarkdown));
+      msgs.push(...validateDrill(drillDraft));
     }
     return msgs;
   }, [
@@ -116,6 +134,7 @@ const Author = () => {
 
   const updateDraft = (patch: Partial<Problem>) => setDraft((prev) => ({ ...prev, ...patch }));
   const updateDesignDraft = (patch: Partial<SystemDesignPrompt>) => setDesignDraft((prev) => ({ ...prev, ...patch }));
+  const updateDrillDraft = (patch: Partial<SystemDesignDrill>) => setDrillDraft((prev) => ({ ...prev, ...patch }));
 
   const updateTests = (kind: 'visible' | 'hidden', index: number, patch: Partial<TestCase>) => {
     setDraft((prev) => {
@@ -140,7 +159,7 @@ const Author = () => {
   };
 
   const exportJson = () => {
-    const payload = JSON.stringify(mode === 'dsa' ? draft : designDraft, null, 2);
+    const payload = JSON.stringify(mode === 'dsa' ? draft : mode === 'system' ? designDraft : drillDraft, null, 2);
     setJsonBlob(payload);
   };
 
@@ -149,8 +168,10 @@ const Author = () => {
       const parsed = JSON.parse(jsonBlob) as Problem | SystemDesignPrompt;
       if (mode === 'dsa') {
         setDraft(parsed as Problem);
-      } else {
+      } else if (mode === 'system') {
         setDesignDraft(parsed as SystemDesignPrompt);
+      } else {
+        setDrillDraft(parsed as SystemDesignDrill);
       }
     } catch {
       setMessages((prev) => [...prev, { type: 'error', message: 'Invalid JSON for import.' }]);
@@ -158,7 +179,7 @@ const Author = () => {
   };
 
   const copyJson = async () => {
-    const payload = JSON.stringify(mode === 'dsa' ? draft : designDraft, null, 2);
+    const payload = JSON.stringify(mode === 'dsa' ? draft : mode === 'system' ? designDraft : drillDraft, null, 2);
     await navigator.clipboard.writeText(payload);
     setJsonBlob(payload);
   };
@@ -169,18 +190,24 @@ const Author = () => {
     const existing = loadOverlayPack();
     const mergedProblems = existing?.problems ?? [];
     const mergedDesign = existing?.systemDesignPrompts ?? [];
+    const mergedDrills = existing?.systemDesignDrills ?? [];
     let nextProblems = mergedProblems;
     let nextDesign = mergedDesign;
+    let nextDrills = mergedDrills;
     if (mode === 'dsa') {
       nextProblems = mergedProblems.filter((problem) => problem.id !== draft.id);
       nextProblems.push(draft);
-    } else {
+    } else if (mode === 'system') {
       nextDesign = mergedDesign.filter((prompt) => prompt.id !== designDraft.id);
       nextDesign.push(designDraft);
+    } else {
+      nextDrills = mergedDrills.filter((drill) => drill.id !== drillDraft.id);
+      nextDrills.push(drillDraft);
     }
     const pack: OverlayPack = {
       problems: nextProblems,
       systemDesignPrompts: nextDesign,
+      systemDesignDrills: nextDrills,
       updatedAt: new Date().toISOString(),
       version: 1
     };
@@ -228,6 +255,14 @@ const Author = () => {
             onClick={() => setMode('system')}
           >
             System Design
+          </button>
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'drill' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('drill')}
+          >
+            Drills
           </button>
         </div>
       </section>
@@ -281,7 +316,7 @@ const Author = () => {
               />
             </label>
           </div>
-          ) : (
+          ) : mode === 'system' ? (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm">
                 ID
@@ -330,6 +365,59 @@ const Author = () => {
                 />
               </label>
             </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                ID
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.id}
+                  onChange={(e) => updateDrillDraft({ id: e.target.value.trim() })}
+                />
+              </label>
+              <label className="text-sm">
+                Title
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.title}
+                  onChange={(e) => updateDrillDraft({ title: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Type
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={drillDraft.type}
+                  onChange={(e) => updateDrillDraft({ type: e.target.value as SystemDesignDrill['type'] })}
+                >
+                  <option value="requirements">requirements</option>
+                  <option value="api">api</option>
+                  <option value="data-scaling">data-scaling</option>
+                  <option value="reliability">reliability</option>
+                  <option value="tradeoffs">tradeoffs</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Difficulty
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={drillDraft.difficulty}
+                  onChange={(e) => updateDrillDraft({ difficulty: e.target.value as SystemDesignDrill['difficulty'] })}
+                >
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Related prompt ID (optional)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.relatedPromptId ?? ''}
+                  onChange={(e) => updateDrillDraft({ relatedPromptId: e.target.value.trim() || undefined })}
+                />
+              </label>
+            </div>
           )}
 
           {mode === 'dsa' ? (
@@ -341,7 +429,7 @@ const Author = () => {
                 onChange={(e) => updateDraft({ statementMarkdown: e.target.value })}
               />
             </label>
-          ) : (
+          ) : mode === 'system' ? (
             <label className="text-sm">
               Prompt (Markdown)
               <textarea
@@ -350,19 +438,28 @@ const Author = () => {
                 onChange={(e) => updateDesignDraft({ promptMarkdown: e.target.value })}
               />
             </label>
+          ) : (
+            <label className="text-sm">
+              Prompt (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={drillDraft.promptMarkdown}
+                onChange={(e) => updateDrillDraft({ promptMarkdown: e.target.value })}
+              />
+            </label>
           )}
 
           <label className="text-sm">
             Constraints (one per line)
             <textarea
               className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-              value={mode === 'dsa' ? draft.constraints.join('\n') : designDraft.constraints.join('\n')}
+              value={mode === 'dsa' ? draft.constraints.join('\n') : mode === 'system' ? designDraft.constraints.join('\n') : ''}
               onChange={(e) =>
                 mode === 'dsa'
                   ? updateDraft({ constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) })
-                  : updateDesignDraft({
+                  : mode === 'system' ? updateDesignDraft({
                       constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
-                    })
+                    }) : undefined
               }
             />
           </label>
@@ -376,7 +473,7 @@ const Author = () => {
                 onChange={(e) => updateDraft({ guidedStub: e.target.value })}
               />
             </label>
-          ) : (
+          ) : mode === 'system' ? (
             <label className="text-sm">
               Guided design stub (Markdown)
               <textarea
@@ -385,6 +482,98 @@ const Author = () => {
                 onChange={(e) => updateDesignDraft({ guidedDesignStubMarkdown: e.target.value })}
               />
             </label>
+          ) : (
+            <label className="text-sm">
+              Starter template (Markdown)
+              <textarea
+                className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                value={drillDraft.starterTemplateMarkdown}
+                onChange={(e) => updateDrillDraft({ starterTemplateMarkdown: e.target.value })}
+              />
+            </label>
+          )}
+
+          {mode === 'drill' && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                Steps included (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.stepsIncluded.join(', ')}
+                  onChange={(e) =>
+                    updateDrillDraft({
+                      stepsIncluded: e.target.value
+                        .split(',')
+                        .map((v) => Number(v.trim()))
+                        .filter((v) => !Number.isNaN(v))
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Time limit (minutes)
+                <input
+                  type="number"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.timeLimitMinutes}
+                  onChange={(e) => updateDrillDraft({ timeLimitMinutes: Number(e.target.value) })}
+                />
+              </label>
+              <label className="text-sm">
+                Rubric category IDs (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.rubricSubset.categoryIds.join(', ')}
+                  onChange={(e) =>
+                    updateDrillDraft({
+                      rubricSubset: {
+                        ...drillDraft.rubricSubset,
+                        categoryIds: e.target.value.split(',').map((v) => v.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Rubric item IDs (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.rubricSubset.itemIds.join(', ')}
+                  onChange={(e) =>
+                    updateDrillDraft({
+                      rubricSubset: {
+                        ...drillDraft.rubricSubset,
+                        itemIds: e.target.value.split(',').map((v) => v.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Reference notes (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.referenceNotes.join('\n')}
+                  onChange={(e) =>
+                    updateDrillDraft({
+                      referenceNotes: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Recall questions (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={drillDraft.recallQuestions.join('\n')}
+                  onChange={(e) =>
+                    updateDrillDraft({
+                      recallQuestions: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+            </div>
           )}
 
           {mode === 'dsa' ? (

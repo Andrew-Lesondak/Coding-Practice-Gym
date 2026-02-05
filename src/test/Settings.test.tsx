@@ -5,7 +5,7 @@ import { useAppStore } from '../store/useAppStore';
 describe('Settings page', () => {
   beforeEach(() => {
     useAppStore.setState({
-      progress: { problems: {}, systemDesign: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false }
     });
   });

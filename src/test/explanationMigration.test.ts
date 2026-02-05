@@ -12,5 +12,6 @@ describe('store migration', () => {
     expect(migrated.progress.problems.demo.explanationHistory).toBeDefined();
     expect(Array.isArray(migrated.progress.problems.demo.explanationHistory)).toBe(true);
     expect(migrated.progress.systemDesign).toBeDefined();
+    expect(migrated.progress.systemDesignDrills).toBeDefined();
   });
 });

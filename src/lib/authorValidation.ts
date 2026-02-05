@@ -4,6 +4,7 @@ import { Problem } from '../types/problem';
 import { runInWorker } from './runnerClient';
 import { parseDesignSteps, parseTemplateRegions } from './systemDesignStub';
 import { SystemDesignPrompt } from '../types/systemDesign';
+import { SystemDesignDrill } from '../types/systemDesignDrill';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -108,6 +109,24 @@ export const validateRubric = (rubric: SystemDesignPrompt['rubric']): Validation
       }
     });
   });
+  return messages;
+};
+
+export const validateDrill = (drill: SystemDesignDrill): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (drill.stepsIncluded.length === 0) {
+    messages.push({ type: 'error', message: 'Drill must include at least one step.' });
+  }
+  const steps = parseDesignSteps(drill.starterTemplateMarkdown);
+  const stepIds = new Set(steps.map((step) => step.index));
+  drill.stepsIncluded.forEach((step) => {
+    if (!stepIds.has(step)) {
+      messages.push({ type: 'error', message: `Starter template missing step ${step}.` });
+    }
+  });
+  if (drill.rubricSubset.categoryIds.length === 0 || drill.rubricSubset.itemIds.length === 0) {
+    messages.push({ type: 'error', message: 'Drill rubric subset must include categories and itemIds.' });
+  }
   return messages;
 };
 

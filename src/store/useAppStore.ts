@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ProgressState, SettingsState, ProblemProgress, SystemDesignProgress, StepCompletion } from '../types/progress';
+import {
+  ProgressState,
+  SettingsState,
+  ProblemProgress,
+  SystemDesignProgress,
+  StepCompletion,
+  SystemDesignDrillProgress
+} from '../types/progress';
 import { getOverlayEnabled, setOverlayEnabled } from '../lib/problemPack';
 
 const initialSettings: SettingsState = {
@@ -29,6 +36,15 @@ const createDefaultSystemDesignProgress = (): SystemDesignProgress => ({
   explanationHistory: []
 });
 
+const createDefaultSystemDesignDrillProgress = (): SystemDesignDrillProgress => ({
+  attempts: 0,
+  stepCompletion: {},
+  rubricChecks: {},
+  reviewIntervalDays: 2,
+  easeFactor: 2.3,
+  explanationHistory: []
+});
+
 type AppState = {
   progress: ProgressState;
   settings: SettingsState;
@@ -50,12 +66,19 @@ type AppState = {
     promptId: string,
     explanation: { tradeoff: string; risk: string; scaleChange: string }
   ) => void;
+  updateSystemDesignDrillProgress: (drillId: string, patch: Partial<SystemDesignDrillProgress>) => void;
+  setSystemDesignDrillStepStatus: (drillId: string, stepIndex: number, status: StepCompletion[number]) => void;
+  setSystemDesignDrillRubricCheck: (drillId: string, itemId: string, checked: boolean) => void;
+  saveSystemDesignDrillExplanation: (
+    drillId: string,
+    explanation: { decision: string; risk: string }
+  ) => void;
 };
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      progress: { problems: {}, systemDesign: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {} },
       settings: initialSettings,
       overlayVersion: 0,
       updateProblemProgress: (problemId, patch) =>
@@ -201,11 +224,83 @@ export const useAppStore = create<AppState>()(
               }
             }
           };
+        }),
+      updateSystemDesignDrillProgress: (drillId, patch) =>
+        set((state) => {
+          const current = state.progress.systemDesignDrills[drillId] ?? createDefaultSystemDesignDrillProgress();
+          return {
+            progress: {
+              ...state.progress,
+              systemDesignDrills: {
+                ...state.progress.systemDesignDrills,
+                [drillId]: { ...current, ...patch }
+              }
+            }
+          };
+        }),
+      setSystemDesignDrillStepStatus: (drillId, stepIndex, status) =>
+        set((state) => {
+          const current = state.progress.systemDesignDrills[drillId] ?? createDefaultSystemDesignDrillProgress();
+          return {
+            progress: {
+              ...state.progress,
+              systemDesignDrills: {
+                ...state.progress.systemDesignDrills,
+                [drillId]: {
+                  ...current,
+                  stepCompletion: {
+                    ...current.stepCompletion,
+                    [stepIndex]: status
+                  }
+                }
+              }
+            }
+          };
+        }),
+      setSystemDesignDrillRubricCheck: (drillId, itemId, checked) =>
+        set((state) => {
+          const current = state.progress.systemDesignDrills[drillId] ?? createDefaultSystemDesignDrillProgress();
+          return {
+            progress: {
+              ...state.progress,
+              systemDesignDrills: {
+                ...state.progress.systemDesignDrills,
+                [drillId]: {
+                  ...current,
+                  rubricChecks: {
+                    ...current.rubricChecks,
+                    [itemId]: checked
+                  }
+                }
+              }
+            }
+          };
+        }),
+      saveSystemDesignDrillExplanation: (drillId, explanation) =>
+        set((state) => {
+          const current = state.progress.systemDesignDrills[drillId] ?? createDefaultSystemDesignDrillProgress();
+          const updatedAt = new Date().toISOString();
+          const existing = current.explanation;
+          const history = current.explanationHistory ?? [];
+          const nextHistory = existing ? [...history, existing] : history;
+          return {
+            progress: {
+              ...state.progress,
+              systemDesignDrills: {
+                ...state.progress.systemDesignDrills,
+                [drillId]: {
+                  ...current,
+                  explanation: { ...explanation, updatedAt },
+                  explanationHistory: nextHistory
+                }
+              }
+            }
+          };
         })
     }),
     {
       name: 'dsa-gym-store',
-      version: 4,
+      version: 5,
       migrate: (state, version) => {
         if (version === 1) {
           const next = state as AppState;
@@ -216,6 +311,9 @@ export const useAppStore = create<AppState>()(
           });
           if (!next.progress.systemDesign) {
             next.progress.systemDesign = {};
+          }
+          if (!next.progress.systemDesignDrills) {
+            next.progress.systemDesignDrills = {};
           }
           if (typeof next.settings.overlayEnabled !== 'boolean') {
             next.settings.overlayEnabled = getOverlayEnabled();
@@ -233,6 +331,13 @@ export const useAppStore = create<AppState>()(
           const next = state as AppState;
           if (!next.progress.systemDesign) {
             next.progress.systemDesign = {};
+          }
+          return next;
+        }
+        if (version === 4) {
+          const next = state as AppState;
+          if (!next.progress.systemDesignDrills) {
+            next.progress.systemDesignDrills = {};
           }
           return next;
         }
@@ -256,4 +361,11 @@ export const getProblemProgress = (state: ProgressState, problemId: string): Pro
 
 export const getSystemDesignProgress = (state: ProgressState, promptId: string): SystemDesignProgress => {
   return state.systemDesign[promptId] ?? createDefaultSystemDesignProgress();
+};
+
+export const getSystemDesignDrillProgress = (
+  state: ProgressState,
+  drillId: string
+): SystemDesignDrillProgress => {
+  return state.systemDesignDrills[drillId] ?? createDefaultSystemDesignDrillProgress();
 };

@@ -1,10 +1,11 @@
 import { Problem, ProblemPack } from '../types/problem';
 import { SystemDesignPrompt } from '../types/systemDesign';
+import { SystemDesignDrill } from '../types/systemDesignDrill';
 
 const OVERLAY_KEY = 'dsa-gym-overlay-pack';
 const OVERLAY_ENABLED_KEY = 'dsa-gym-overlay-enabled';
 
-export type OverlayPack = ProblemPack & { systemDesignPrompts?: SystemDesignPrompt[] };
+export type OverlayPack = ProblemPack & { systemDesignPrompts?: SystemDesignPrompt[]; systemDesignDrills?: SystemDesignDrill[] };
 
 export const loadOverlayPack = (): OverlayPack | null => {
   const raw = localStorage.getItem(OVERLAY_KEY);

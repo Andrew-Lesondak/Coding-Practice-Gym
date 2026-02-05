@@ -34,6 +34,7 @@ export type ProblemProgress = {
 export type ProgressState = {
   problems: Record<string, ProblemProgress>;
   systemDesign: Record<string, SystemDesignProgress>;
+  systemDesignDrills: Record<string, SystemDesignDrillProgress>;
 };
 
 export type SystemDesignProgress = {
@@ -72,6 +73,28 @@ export type SystemDesignProgress = {
     overall: number;
   };
   lastCompareViewedAt?: string;
+};
+
+export type SystemDesignDrillProgress = {
+  attempts: number;
+  lastAttemptedAt?: string;
+  lastScore?: number;
+  confidence?: number;
+  nextReviewAt?: string;
+  reviewIntervalDays: number;
+  easeFactor: number;
+  stepCompletion: StepCompletion;
+  rubricChecks: Record<string, boolean>;
+  explanation?: {
+    decision: string;
+    risk: string;
+    updatedAt: string;
+  };
+  explanationHistory?: {
+    decision: string;
+    risk: string;
+    updatedAt: string;
+  }[];
 };
 
 export type SettingsState = {

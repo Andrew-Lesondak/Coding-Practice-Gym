@@ -6,7 +6,7 @@ import { useAppStore } from '../store/useAppStore';
 describe('SystemDesign compare toggle', () => {
   beforeEach(() => {
     useAppStore.setState({
-      progress: { problems: {}, systemDesign: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false },
       overlayVersion: 0
     } as any);

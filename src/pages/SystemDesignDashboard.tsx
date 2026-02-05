@@ -27,6 +27,12 @@ const SystemDesignDashboard = () => {
               Start a prompt
             </Link>
             <Link
+              to="/system-design/drills"
+              className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200"
+            >
+              Run a drill
+            </Link>
+            <Link
               to="/system-design/catalog"
               className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200"
             >

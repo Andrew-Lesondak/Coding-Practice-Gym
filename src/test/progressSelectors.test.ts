@@ -15,7 +15,8 @@ describe('progress selectors', () => {
           explanationHistory: []
         }
       },
-      systemDesign: {}
+      systemDesign: {},
+      systemDesignDrills: {}
     };
 
     const stats = getStats(problems, state);
