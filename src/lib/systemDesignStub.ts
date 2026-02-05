@@ -77,3 +77,16 @@ export const getStepIndexPosition = (markdown: string, stepIndex: number) => {
   const match = new RegExp(`^##\\s*Step\\s+${stepIndex}\\s*:`, 'm').exec(markdown);
   return match?.index ?? 0;
 };
+
+export const insertIntoTemplateRegion = (markdown: string, stepIndex: number, text: string) => {
+  const startRegex = new RegExp(`\\[TEMPLATE_START\\s+step=${stepIndex}\\]`);
+  const endRegex = new RegExp(`\\[TEMPLATE_END\\s+step=${stepIndex}\\]`);
+  const startMatch = startRegex.exec(markdown);
+  const endMatch = endRegex.exec(markdown);
+  if (!startMatch || !endMatch) return markdown;
+  const insertPos = endMatch.index;
+  const prefix = markdown.slice(0, insertPos).trimEnd();
+  const suffix = markdown.slice(insertPos);
+  const insertion = `\n- ${text}\n`;
+  return `${prefix}${insertion}${suffix}`;
+};

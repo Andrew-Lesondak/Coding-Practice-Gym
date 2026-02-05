@@ -38,7 +38,7 @@ describe('SystemDesign review flow', () => {
     } as any);
   });
 
-  it('shows compare toggle with previous explanation', () => {
+  it('shows compare section and allows add to my design', () => {
     render(
       <MemoryRouter initialEntries={["/system-design/url-shortener"]}>
         <Routes>
@@ -48,6 +48,11 @@ describe('SystemDesign review flow', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(screen.getByText('Compare to reference')).toBeInTheDocument();
     expect(screen.getByText('Compare my last explanation')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add to my design' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Practice' }));
+    const textarea = screen.getByRole('textbox');
+    expect(textarea).toHaveValue(expect.stringContaining('Decision:'));
   });
 });

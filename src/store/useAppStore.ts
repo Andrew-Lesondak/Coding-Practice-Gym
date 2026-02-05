@@ -205,7 +205,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'dsa-gym-store',
-      version: 3,
+      version: 4,
       migrate: (state, version) => {
         if (version === 1) {
           const next = state as AppState;
@@ -223,6 +223,13 @@ export const useAppStore = create<AppState>()(
           return next;
         }
         if (version === 2) {
+          const next = state as AppState;
+          if (!next.progress.systemDesign) {
+            next.progress.systemDesign = {};
+          }
+          return next;
+        }
+        if (version === 3) {
           const next = state as AppState;
           if (!next.progress.systemDesign) {
             next.progress.systemDesign = {};

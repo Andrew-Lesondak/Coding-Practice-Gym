@@ -6,8 +6,18 @@ import StepList from '../components/StepList';
 import MermaidEditor from '../components/MermaidEditor';
 import SystemDesignRubric from '../components/SystemDesignRubric';
 import { useSystemDesignPrompts } from '../lib/useSystemDesignPrompts';
-import { computeDesignStepStatus, getStepIndexPosition, parseDesignSteps } from '../lib/systemDesignStub';
+import {
+  computeDesignStepStatus,
+  getStepIndexPosition,
+  insertIntoTemplateRegion,
+  parseDesignSteps
+} from '../lib/systemDesignStub';
 import { computeRubricScore, getRubricSuggestions } from '../lib/systemDesignRubric';
+import { buildReferenceText, extractDesignSections } from '../lib/systemDesignCompare';
+import { diffLines } from '../lib/lineDiff';
+import { getMissingRubricItems, groupGapsByCategory } from '../lib/systemDesignGaps';
+import { getSuggestedStepForDecision } from '../lib/systemDesignMapping';
+import { isDecisionMentioned } from '../lib/referenceCoverage';
 import { useAppStore, getSystemDesignProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
 import { SystemDesignProgress } from '../types/progress';
@@ -44,6 +54,7 @@ const SystemDesignDetail = () => {
   const [risk, setRisk] = useState('');
   const [scaleChange, setScaleChange] = useState('');
   const [showCompare, setShowCompare] = useState(false);
+  const [highlightDiff, setHighlightDiff] = useState(false);
   const [forceComplete, setForceComplete] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -92,6 +103,18 @@ const SystemDesignDetail = () => {
 
   const rubricSuggestions = getRubricSuggestions(prompt.rubric, `${content}\n${mermaidText}`);
   const rubricScore = computeRubricScore(prompt.rubric, promptProgress.rubricChecks);
+  const sections = useMemo(() => extractDesignSections(content), [content]);
+  const referenceText = useMemo(() => buildReferenceText(prompt.reference), [prompt.reference]);
+  const myText = useMemo(
+    () =>
+      sections
+        .map((section) => `Step ${section.stepNumber}: ${section.title}\n${section.textContent}`)
+        .join('\n\n'),
+    [sections]
+  );
+  const diff = useMemo(() => (highlightDiff ? diffLines(myText, referenceText) : []), [myText, referenceText, highlightDiff]);
+  const gaps = useMemo(() => getMissingRubricItems(prompt.rubric, promptProgress.rubricChecks), [prompt, promptProgress]);
+  const gapsByCategory = useMemo(() => groupGapsByCategory(gaps), [gaps]);
   const activeStep = steps.find((step) => completion[step.index] !== 'completed')?.index ?? steps[0]?.index ?? 1;
   const allInProgress = steps.every((step) => completion[step.index] && completion[step.index] !== 'not_started');
   const categoriesOk = prompt.rubric.categories.every((category) =>
@@ -113,7 +136,9 @@ const SystemDesignDetail = () => {
     const base: SystemDesignProgress = {
       ...promptProgress,
       passes: promptProgress.passes + 1,
-      lastCompletedAt: new Date().toISOString()
+      lastCompletedAt: new Date().toISOString(),
+      sectionSnapshot: sections,
+      lastRubricScoreSnapshot: { categoryScores: rubricScore.categoryScores, overall: rubricScore.overall }
     };
     const updated = updateScheduleGeneric(base, 3, 3);
     updateProgress(prompt.id, updated);
@@ -135,6 +160,19 @@ const SystemDesignDetail = () => {
       scaleChange: scaleChange.trim()
     });
     setShowExplainModal(false);
+  };
+
+  const handleAddDecision = (decisionText: string) => {
+    const step = getSuggestedStepForDecision(decisionText);
+    const inserted = insertIntoTemplateRegion(content, step, `Decision: ${decisionText}. Tradeoff: __.`);
+    setContent(inserted);
+    localStorage.setItem(`dsa-gym-sd-${prompt.id}`, inserted);
+  };
+
+  const handleInsertStarter = (text: string, step: number) => {
+    const inserted = insertIntoTemplateRegion(content, step, text);
+    setContent(inserted);
+    localStorage.setItem(`dsa-gym-sd-${prompt.id}`, inserted);
   };
 
   return (
@@ -324,6 +362,164 @@ const SystemDesignDetail = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+          <div className="glass rounded-2xl p-6 lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg">Compare to reference</h3>
+              <div className="flex items-center gap-2 text-xs text-mist-200">
+                <input
+                  type="checkbox"
+                  checked={highlightDiff}
+                  onChange={(event) => {
+                    setHighlightDiff(event.target.checked);
+                    updateProgress(prompt.id, { lastCompareViewedAt: new Date().toISOString() });
+                  }}
+                />
+                <span>Highlight differences</span>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
+                <p className="text-sm font-semibold text-mist-100">My design</p>
+                {highlightDiff ? (
+                  <div className="mt-2 space-y-1">
+                    {diff.map((line, idx) => (
+                      <p
+                        key={`left-${idx}`}
+                        className={
+                          line.type === 'remove'
+                            ? 'bg-rose-500/10 text-rose-200'
+                            : line.type === 'same'
+                            ? 'text-mist-200'
+                            : 'text-mist-500'
+                        }
+                      >
+                        {line.left ?? ''}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <pre className="mt-2 whitespace-pre-wrap">{myText}</pre>
+                )}
+              </div>
+              <div className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
+                <p className="text-sm font-semibold text-mist-100">Reference</p>
+                {highlightDiff ? (
+                  <div className="mt-2 space-y-1">
+                    {diff.map((line, idx) => (
+                      <p
+                        key={`right-${idx}`}
+                        className={
+                          line.type === 'add'
+                            ? 'bg-emerald-500/10 text-emerald-200'
+                            : line.type === 'same'
+                            ? 'text-mist-200'
+                            : 'text-mist-500'
+                        }
+                      >
+                        {line.right ?? ''}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <ReactMarkdown className="text-xs text-mist-200 space-y-2">{prompt.reference.overviewMarkdown}</ReactMarkdown>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Key decisions</p>
+                      <ul className="mt-2 space-y-1">
+                        {prompt.reference.keyDecisions.map((decision) => (
+                          <li key={decision.decision}>
+                            <strong>{decision.decision}</strong>: {decision.why} (Alternatives: {decision.alternatives.join(', ')})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-6 lg:col-span-2">
+            <h3 className="font-display text-lg">Gaps</h3>
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              {Object.entries(gapsByCategory).map(([category, items]) => (
+                <div key={category} className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
+                  <p className="text-sm font-semibold text-mist-100">{category}</p>
+                  <ul className="mt-2 space-y-2">
+                    {items.map((item) => (
+                      <li key={item.itemId}>
+                        <p>{item.text}</p>
+                        <p className="text-mist-400">Why it matters: {item.whyItMatters}</p>
+                        <p className="text-mist-400">Suggested step: {item.suggestedStep}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-6 lg:col-span-2">
+            <h3 className="font-display text-lg">Reference decision coverage (assist)</h3>
+            <p className="mt-2 text-sm text-mist-200">Mentions are advisory only. Check and add as needed.</p>
+            <div className="mt-4 space-y-3 text-sm text-mist-200">
+              {prompt.reference.keyDecisions.map((decision) => {
+                const mentioned = isDecisionMentioned(decision, myText);
+                return (
+                  <div key={decision.decision} className="rounded-xl border border-white/10 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-mist-100">{decision.decision}</p>
+                      <span className={mentioned ? 'text-emerald-300' : 'text-amber-300'}>
+                        {mentioned ? 'Mentioned (assist)' : 'Not mentioned (assist)'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-mist-200">{decision.why}</p>
+                    <button
+                      className="mt-3 rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                      onClick={() => handleAddDecision(decision.decision)}
+                    >
+                      Add to my design
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-6 lg:col-span-2">
+            <h3 className="font-display text-lg">Next actions</h3>
+            {gaps.length === 0 ? (
+              <p className="mt-2 text-sm text-mist-200">No missing rubric items detected.</p>
+            ) : (
+              <div className="mt-3 space-y-3 text-sm text-mist-200">
+                {gaps
+                  .sort((a, b) => b.weight - a.weight)
+                  .slice(0, 3)
+                  .map((gap) => (
+                    <div key={gap.itemId} className="rounded-xl border border-white/10 p-3">
+                      <p className="font-semibold text-mist-100">{gap.text}</p>
+                      <p className="text-mist-400">Suggested step: {gap.suggestedStep}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                          onClick={() => onSelectStep(gap.suggestedStep)}
+                        >
+                          Jump to Step {gap.suggestedStep}
+                        </button>
+                        <button
+                          className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                          onClick={() =>
+                            handleInsertStarter(
+                              `Consider: ${gap.text}. Decision: __. Tradeoff: __.`,
+                              gap.suggestedStep
+                            )
+                          }
+                        >
+                          Insert starter text
+                        </button>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>

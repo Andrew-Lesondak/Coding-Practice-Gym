@@ -62,6 +62,16 @@ export type SystemDesignProgress = {
     scaleChange: string;
     updatedAt: string;
   }[];
+  sectionSnapshot?: {
+    stepNumber: number;
+    title: string;
+    textContent: string;
+  }[];
+  lastRubricScoreSnapshot?: {
+    categoryScores: Record<string, number>;
+    overall: number;
+  };
+  lastCompareViewedAt?: string;
 };
 
 export type SettingsState = {
