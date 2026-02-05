@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ProgressState, SettingsState, ProblemProgress } from '../types/progress';
+import { ProgressState, SettingsState, ProblemProgress, SystemDesignProgress, StepCompletion } from '../types/progress';
 import { getOverlayEnabled, setOverlayEnabled } from '../lib/problemPack';
 
 const initialSettings: SettingsState = {
@@ -14,6 +14,16 @@ const createDefaultProgress = (): ProblemProgress => ({
   attempts: 0,
   passes: 0,
   stepCompletion: {},
+  reviewIntervalDays: 2,
+  easeFactor: 2.3,
+  explanationHistory: []
+});
+
+const createDefaultSystemDesignProgress = (): SystemDesignProgress => ({
+  attempts: 0,
+  passes: 0,
+  stepCompletion: {},
+  rubricChecks: {},
   reviewIntervalDays: 2,
   easeFactor: 2.3,
   explanationHistory: []
@@ -33,12 +43,19 @@ type AppState = {
     problemId: string,
     explanation: { pattern: string; why: string; complexity: string }
   ) => void;
+  updateSystemDesignProgress: (promptId: string, patch: Partial<SystemDesignProgress>) => void;
+  setSystemDesignStepStatus: (promptId: string, stepIndex: number, status: StepCompletion[number]) => void;
+  setSystemDesignRubricCheck: (promptId: string, itemId: string, checked: boolean) => void;
+  saveSystemDesignExplanation: (
+    promptId: string,
+    explanation: { tradeoff: string; risk: string; scaleChange: string }
+  ) => void;
 };
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      progress: { problems: {} },
+      progress: { problems: {}, systemDesign: {} },
       settings: initialSettings,
       overlayVersion: 0,
       updateProblemProgress: (problemId, patch) =>
@@ -112,11 +129,83 @@ export const useAppStore = create<AppState>()(
               }
             }
           };
+        }),
+      updateSystemDesignProgress: (promptId, patch) =>
+        set((state) => {
+          const current = state.progress.systemDesign[promptId] ?? createDefaultSystemDesignProgress();
+          return {
+            progress: {
+              ...state.progress,
+              systemDesign: {
+                ...state.progress.systemDesign,
+                [promptId]: { ...current, ...patch }
+              }
+            }
+          };
+        }),
+      setSystemDesignStepStatus: (promptId, stepIndex, status) =>
+        set((state) => {
+          const current = state.progress.systemDesign[promptId] ?? createDefaultSystemDesignProgress();
+          return {
+            progress: {
+              ...state.progress,
+              systemDesign: {
+                ...state.progress.systemDesign,
+                [promptId]: {
+                  ...current,
+                  stepCompletion: {
+                    ...current.stepCompletion,
+                    [stepIndex]: status
+                  }
+                }
+              }
+            }
+          };
+        }),
+      setSystemDesignRubricCheck: (promptId, itemId, checked) =>
+        set((state) => {
+          const current = state.progress.systemDesign[promptId] ?? createDefaultSystemDesignProgress();
+          return {
+            progress: {
+              ...state.progress,
+              systemDesign: {
+                ...state.progress.systemDesign,
+                [promptId]: {
+                  ...current,
+                  rubricChecks: {
+                    ...current.rubricChecks,
+                    [itemId]: checked
+                  }
+                }
+              }
+            }
+          };
+        }),
+      saveSystemDesignExplanation: (promptId, explanation) =>
+        set((state) => {
+          const current = state.progress.systemDesign[promptId] ?? createDefaultSystemDesignProgress();
+          const updatedAt = new Date().toISOString();
+          const existing = current.explanation;
+          const history = current.explanationHistory ?? [];
+          const nextHistory = existing ? [...history, existing] : history;
+          return {
+            progress: {
+              ...state.progress,
+              systemDesign: {
+                ...state.progress.systemDesign,
+                [promptId]: {
+                  ...current,
+                  explanation: { ...explanation, updatedAt },
+                  explanationHistory: nextHistory
+                }
+              }
+            }
+          };
         })
     }),
     {
       name: 'dsa-gym-store',
-      version: 2,
+      version: 3,
       migrate: (state, version) => {
         if (version === 1) {
           const next = state as AppState;
@@ -125,8 +214,18 @@ export const useAppStore = create<AppState>()(
               progress.explanationHistory = [];
             }
           });
+          if (!next.progress.systemDesign) {
+            next.progress.systemDesign = {};
+          }
           if (typeof next.settings.overlayEnabled !== 'boolean') {
             next.settings.overlayEnabled = getOverlayEnabled();
+          }
+          return next;
+        }
+        if (version === 2) {
+          const next = state as AppState;
+          if (!next.progress.systemDesign) {
+            next.progress.systemDesign = {};
           }
           return next;
         }
@@ -146,4 +245,8 @@ export const migrateStore = (state: unknown, version: number) => {
 
 export const getProblemProgress = (state: ProgressState, problemId: string): ProblemProgress => {
   return state.problems[problemId] ?? createDefaultProgress();
+};
+
+export const getSystemDesignProgress = (state: ProgressState, promptId: string): SystemDesignProgress => {
+  return state.systemDesign[promptId] ?? createDefaultSystemDesignProgress();
 };

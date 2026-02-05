@@ -3,7 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 describe('explanation persistence', () => {
   it('saves explanation and preserves history', () => {
     useAppStore.setState({
-      progress: { problems: {} },
+      progress: { problems: {}, systemDesign: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false },
       overlayVersion: 0
     } as any);

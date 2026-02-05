@@ -12,6 +12,36 @@ After you pass a problem, the app prompts you to explain:
 
 This explanation is stored per problem and shown during reviews. After a re-solve, you can compare your previous explanation to the new one and update it if it improved.
 
+## System Design Gym
+
+The System Design Gym mirrors the DSA learning loop with rubric-based self-evaluation. Prompts live in `src/data/systemDesignPrompts.ts` and are merged with local overlay packs at runtime.
+
+### Guided design stub format
+
+```md
+## Step 1: Requirements and scope
+[TEMPLATE_START step=1]
+- Functional requirements:
+  - TODO:
+[TEMPLATE_END step=1]
+```
+
+Step headers must be sequential and every step needs a matching `TEMPLATE_START`/`TEMPLATE_END` region.
+
+### Rubric scoring
+
+Rubric items count only when the user checks them. Suggestions highlight potential rubric items but do not auto-check. Overall score is a weighted average across categories.
+
+### Explain it back (system design)
+
+After completing a prompt, the app asks for:
+
+- Primary tradeoff and why
+- Biggest risk and mitigation
+- One change at 10x scale
+
+This explanation is shown during future reviews.
+
 ## Run locally
 
 ```bash
@@ -110,6 +140,8 @@ Visit `/author` in dev mode to draft a new problem in the browser. The authoring
 - Import/export JSON and copy-to-clipboard.
 - Save to a local overlay pack stored in `localStorage` (dev only).
 
+Switch the authoring mode to “System Design” to draft a system design prompt and rubric. Validation checks step markers and rubric weights before saving.
+
 ### Stub marker format
 
 ```ts
@@ -124,6 +156,8 @@ Step numbers must be sequential starting at 1, and each step must have exactly o
 ### Overlay pack behavior
 
 Overlay problems are merged with the built-in pack at runtime. If an overlay problem shares the same `id`, the overlay version replaces the built-in one. Use the overlay toggle in `/author` to enable or disable overlay problems.
+
+Overlay packs also support system design prompts via the `systemDesignPrompts` array. The merge rule is the same: overlay prompts replace built-ins with matching `id`.
 
 ## Roadmap (v2 ideas)
 

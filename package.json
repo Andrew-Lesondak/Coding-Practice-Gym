@@ -18,6 +18,7 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^7.13.0",
+    "mermaid": "^10.9.1",
     "typescript": "^5.4.5",
     "zustand": "^4.5.2"
   },

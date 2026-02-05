@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Problem, TestCase } from '../types/problem';
+import { SystemDesignPrompt } from '../types/systemDesign';
 import { useAppStore } from '../store/useAppStore';
 import { loadOverlayPack, saveOverlayPack, OverlayPack } from '../lib/problemPack';
 import {
+  validateDesignStepMarkers,
   validateGuidedStubCompile,
   validateReferenceSolution,
   validateStepMarkers,
   validateTests,
-  ValidationMessage
+  ValidationMessage,
+  validateRubric
 } from '../lib/authorValidation';
 import { stableStringify } from '../lib/runnerUtils';
 
@@ -34,8 +37,27 @@ const defaultProblem = (): Problem => ({
   }
 });
 
+const defaultSystemDesignPrompt = (): SystemDesignPrompt => ({
+  id: '',
+  title: '',
+  difficulty: 'easy',
+  domain: '',
+  tags: [],
+  promptMarkdown: '',
+  requirements: { functional: [], nonFunctional: [] },
+  scale: { traffic: '', storage: '', retention: '' },
+  constraints: [],
+  guidedDesignStubMarkdown: '',
+  rubric: { categories: [] },
+  reference: { overviewMarkdown: '', keyDecisions: [] },
+  recallQuestions: [],
+  commonPitfalls: []
+});
+
 const Author = () => {
+  const [mode, setMode] = useState<'dsa' | 'system'>('dsa');
   const [draft, setDraft] = useState<Problem>(defaultProblem());
+  const [designDraft, setDesignDraft] = useState<SystemDesignPrompt>(defaultSystemDesignPrompt());
   const [messages, setMessages] = useState<ValidationMessage[]>([]);
   const [isValidatingRef, setIsValidatingRef] = useState(false);
   const [refMessages, setRefMessages] = useState<ValidationMessage[]>([]);
@@ -46,11 +68,23 @@ const Author = () => {
 
   const syncMessages = useMemo(() => {
     const msgs: ValidationMessage[] = [];
-    msgs.push(...validateStepMarkers(draft.guidedStub));
-    msgs.push(...validateTests([...draft.tests.visible, ...draft.tests.hidden]));
-    msgs.push(...validateGuidedStubCompile(draft.guidedStub));
+    if (mode === 'dsa') {
+      msgs.push(...validateStepMarkers(draft.guidedStub));
+      msgs.push(...validateTests([...draft.tests.visible, ...draft.tests.hidden]));
+      msgs.push(...validateGuidedStubCompile(draft.guidedStub));
+    } else {
+      msgs.push(...validateDesignStepMarkers(designDraft.guidedDesignStubMarkdown));
+      msgs.push(...validateRubric(designDraft.rubric));
+    }
     return msgs;
-  }, [draft.guidedStub, draft.tests.hidden, draft.tests.visible]);
+  }, [
+    mode,
+    draft.guidedStub,
+    draft.tests.hidden,
+    draft.tests.visible,
+    designDraft.guidedDesignStubMarkdown,
+    designDraft.rubric
+  ]);
 
   useEffect(() => {
     setMessages(syncMessages);
@@ -58,6 +92,10 @@ const Author = () => {
 
   useEffect(() => {
     let timer: number | undefined;
+    if (mode !== 'dsa') {
+      setRefMessages([]);
+      return;
+    }
     if (!draft.referenceSolution || !draft.functionName) {
       setRefMessages([{ type: 'error', message: 'Reference solution and function name are required.' }]);
       return;
@@ -72,11 +110,12 @@ const Author = () => {
     return () => {
       if (timer) window.clearTimeout(timer);
     };
-  }, [draft]);
+  }, [draft, mode]);
 
   const hasBlockingErrors = messages.some((m) => m.type === 'error') || refMessages.some((m) => m.type === 'error');
 
   const updateDraft = (patch: Partial<Problem>) => setDraft((prev) => ({ ...prev, ...patch }));
+  const updateDesignDraft = (patch: Partial<SystemDesignPrompt>) => setDesignDraft((prev) => ({ ...prev, ...patch }));
 
   const updateTests = (kind: 'visible' | 'hidden', index: number, patch: Partial<TestCase>) => {
     setDraft((prev) => {
@@ -101,21 +140,25 @@ const Author = () => {
   };
 
   const exportJson = () => {
-    const payload = JSON.stringify(draft, null, 2);
+    const payload = JSON.stringify(mode === 'dsa' ? draft : designDraft, null, 2);
     setJsonBlob(payload);
   };
 
   const importJson = () => {
     try {
-      const parsed = JSON.parse(jsonBlob) as Problem;
-      setDraft(parsed);
+      const parsed = JSON.parse(jsonBlob) as Problem | SystemDesignPrompt;
+      if (mode === 'dsa') {
+        setDraft(parsed as Problem);
+      } else {
+        setDesignDraft(parsed as SystemDesignPrompt);
+      }
     } catch {
       setMessages((prev) => [...prev, { type: 'error', message: 'Invalid JSON for import.' }]);
     }
   };
 
   const copyJson = async () => {
-    const payload = JSON.stringify(draft, null, 2);
+    const payload = JSON.stringify(mode === 'dsa' ? draft : designDraft, null, 2);
     await navigator.clipboard.writeText(payload);
     setJsonBlob(payload);
   };
@@ -124,11 +167,20 @@ const Author = () => {
     if (!import.meta.env.DEV) return;
     if (hasBlockingErrors) return;
     const existing = loadOverlayPack();
-    const merged = existing?.problems ?? [];
-    const next = merged.filter((problem) => problem.id !== draft.id);
-    next.push(draft);
+    const mergedProblems = existing?.problems ?? [];
+    const mergedDesign = existing?.systemDesignPrompts ?? [];
+    let nextProblems = mergedProblems;
+    let nextDesign = mergedDesign;
+    if (mode === 'dsa') {
+      nextProblems = mergedProblems.filter((problem) => problem.id !== draft.id);
+      nextProblems.push(draft);
+    } else {
+      nextDesign = mergedDesign.filter((prompt) => prompt.id !== designDraft.id);
+      nextDesign.push(designDraft);
+    }
     const pack: OverlayPack = {
-      problems: next,
+      problems: nextProblems,
+      systemDesignPrompts: nextDesign,
       updatedAt: new Date().toISOString(),
       version: 1
     };
@@ -160,10 +212,29 @@ const Author = () => {
             {overlayEnabled ? 'Enabled' : 'Disabled'}
           </button>
         </div>
+        <div className="flex gap-2">
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'dsa' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('dsa')}
+          >
+            DSA
+          </button>
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'system' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('system')}
+          >
+            System Design
+          </button>
+        </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="glass rounded-2xl p-6 space-y-5">
+          {mode === 'dsa' ? (
           <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm">
               ID
@@ -210,43 +281,135 @@ const Author = () => {
               />
             </label>
           </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                ID
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.id}
+                  onChange={(e) => updateDesignDraft({ id: e.target.value.trim() })}
+                />
+              </label>
+              <label className="text-sm">
+                Title
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.title}
+                  onChange={(e) => updateDesignDraft({ title: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Difficulty
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={designDraft.difficulty}
+                  onChange={(e) => updateDesignDraft({ difficulty: e.target.value as SystemDesignPrompt['difficulty'] })}
+                >
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Domain
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.domain}
+                  onChange={(e) => updateDesignDraft({ domain: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Tags (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.tags.join(', ')}
+                  onChange={(e) =>
+                    updateDesignDraft({ tags: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) })
+                  }
+                />
+              </label>
+            </div>
+          )}
 
-          <label className="text-sm">
-            Statement (Markdown)
-            <textarea
-              className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-              value={draft.statementMarkdown}
-              onChange={(e) => updateDraft({ statementMarkdown: e.target.value })}
-            />
-          </label>
+          {mode === 'dsa' ? (
+            <label className="text-sm">
+              Statement (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={draft.statementMarkdown}
+                onChange={(e) => updateDraft({ statementMarkdown: e.target.value })}
+              />
+            </label>
+          ) : (
+            <label className="text-sm">
+              Prompt (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={designDraft.promptMarkdown}
+                onChange={(e) => updateDesignDraft({ promptMarkdown: e.target.value })}
+              />
+            </label>
+          )}
 
           <label className="text-sm">
             Constraints (one per line)
             <textarea
               className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-              value={draft.constraints.join('\n')}
-              onChange={(e) => updateDraft({ constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) })}
+              value={mode === 'dsa' ? draft.constraints.join('\n') : designDraft.constraints.join('\n')}
+              onChange={(e) =>
+                mode === 'dsa'
+                  ? updateDraft({ constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) })
+                  : updateDesignDraft({
+                      constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+              }
             />
           </label>
 
-          <label className="text-sm">
-            Guided stub
-            <textarea
-              className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
-              value={draft.guidedStub}
-              onChange={(e) => updateDraft({ guidedStub: e.target.value })}
-            />
-          </label>
+          {mode === 'dsa' ? (
+            <label className="text-sm">
+              Guided stub
+              <textarea
+                className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                value={draft.guidedStub}
+                onChange={(e) => updateDraft({ guidedStub: e.target.value })}
+              />
+            </label>
+          ) : (
+            <label className="text-sm">
+              Guided design stub (Markdown)
+              <textarea
+                className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                value={designDraft.guidedDesignStubMarkdown}
+                onChange={(e) => updateDesignDraft({ guidedDesignStubMarkdown: e.target.value })}
+              />
+            </label>
+          )}
 
-          <label className="text-sm">
-            Reference solution
-            <textarea
-              className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
-              value={draft.referenceSolution}
-              onChange={(e) => updateDraft({ referenceSolution: e.target.value })}
-            />
-          </label>
+          {mode === 'dsa' ? (
+            <label className="text-sm">
+              Reference solution
+              <textarea
+                className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                value={draft.referenceSolution}
+                onChange={(e) => updateDraft({ referenceSolution: e.target.value })}
+              />
+            </label>
+          ) : (
+            <label className="text-sm">
+              Reference overview (Markdown)
+              <textarea
+                className="mt-2 h-32 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={designDraft.reference.overviewMarkdown}
+                onChange={(e) =>
+                  updateDesignDraft({ reference: { ...designDraft.reference, overviewMarkdown: e.target.value } })
+                }
+              />
+            </label>
+          )}
 
+          {mode === 'dsa' ? (
           <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm">
               Time complexity
@@ -291,6 +454,109 @@ const Author = () => {
               />
             </label>
           </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                Functional requirements (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.requirements.functional.join('\n')}
+                  onChange={(e) =>
+                    updateDesignDraft({
+                      requirements: {
+                        ...designDraft.requirements,
+                        functional: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Non-functional requirements (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.requirements.nonFunctional.join('\n')}
+                  onChange={(e) =>
+                    updateDesignDraft({
+                      requirements: {
+                        ...designDraft.requirements,
+                        nonFunctional: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Scale: traffic
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.scale.traffic}
+                  onChange={(e) =>
+                    updateDesignDraft({ scale: { ...designDraft.scale, traffic: e.target.value } })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Scale: storage
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.scale.storage}
+                  onChange={(e) =>
+                    updateDesignDraft({ scale: { ...designDraft.scale, storage: e.target.value } })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Scale: retention
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.scale.retention}
+                  onChange={(e) =>
+                    updateDesignDraft({ scale: { ...designDraft.scale, retention: e.target.value } })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Rubric JSON
+                <textarea
+                  className="mt-2 h-40 w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs font-mono"
+                  value={JSON.stringify(designDraft.rubric, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const next = JSON.parse(e.target.value);
+                      updateDesignDraft({ rubric: next });
+                    } catch {
+                      // ignore invalid JSON, validation will catch
+                    }
+                  }}
+                />
+              </label>
+              <label className="text-sm">
+                Recall questions (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.recallQuestions.join('\n')}
+                  onChange={(e) =>
+                    updateDesignDraft({
+                      recallQuestions: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Common pitfalls (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={designDraft.commonPitfalls.join('\n')}
+                  onChange={(e) =>
+                    updateDesignDraft({
+                      commonPitfalls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -307,52 +573,54 @@ const Author = () => {
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-5 space-y-4">
-            <h3 className="font-display text-lg">Tests</h3>
-            {(['visible', 'hidden'] as const).map((kind) => (
-              <div key={kind} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs uppercase tracking-[0.2em] text-mist-300">{kind} tests</p>
-                  <button
-                    className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
-                    onClick={() => addTest(kind)}
-                  >
-                    Add
-                  </button>
-                </div>
-                {draft.tests[kind].map((test, index) => (
-                  <div key={`${kind}-${index}`} className="rounded-xl border border-white/10 p-3">
-                    <div className="flex items-center justify-between">
-                      <input
-                        className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs"
-                        value={test.name}
-                        onChange={(e) => updateTests(kind, index, { name: e.target.value })}
-                      />
-                      <button
-                        className="ml-2 text-xs text-rose-300"
-                        onClick={() => removeTest(kind, index)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <textarea
-                      className="mt-2 h-16 w-full rounded-lg border border-white/10 bg-transparent p-2 text-xs font-mono"
-                      value={test.input}
-                      onChange={(e) => updateTests(kind, index, { input: e.target.value })}
-                    />
-                    <textarea
-                      className="mt-2 h-16 w-full rounded-lg border border-white/10 bg-transparent p-2 text-xs font-mono"
-                      value={test.expected}
-                      onChange={(e) => updateTests(kind, index, { expected: e.target.value })}
-                    />
-                    <p className="mt-1 text-[10px] text-mist-300">
-                      Preview: {stableStringify({ input: test.input, expected: test.expected })}
-                    </p>
+          {mode === 'dsa' && (
+            <div className="glass rounded-2xl p-5 space-y-4">
+              <h3 className="font-display text-lg">Tests</h3>
+              {(['visible', 'hidden'] as const).map((kind) => (
+                <div key={kind} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.2em] text-mist-300">{kind} tests</p>
+                    <button
+                      className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                      onClick={() => addTest(kind)}
+                    >
+                      Add
+                    </button>
                   </div>
-                ))}
-              </div>
-            ))}
-          </div>
+                  {draft.tests[kind].map((test, index) => (
+                    <div key={`${kind}-${index}`} className="rounded-xl border border-white/10 p-3">
+                      <div className="flex items-center justify-between">
+                        <input
+                          className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs"
+                          value={test.name}
+                          onChange={(e) => updateTests(kind, index, { name: e.target.value })}
+                        />
+                        <button
+                          className="ml-2 text-xs text-rose-300"
+                          onClick={() => removeTest(kind, index)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <textarea
+                        className="mt-2 h-16 w-full rounded-lg border border-white/10 bg-transparent p-2 text-xs font-mono"
+                        value={test.input}
+                        onChange={(e) => updateTests(kind, index, { input: e.target.value })}
+                      />
+                      <textarea
+                        className="mt-2 h-16 w-full rounded-lg border border-white/10 bg-transparent p-2 text-xs font-mono"
+                        value={test.expected}
+                        onChange={(e) => updateTests(kind, index, { expected: e.target.value })}
+                      />
+                      <p className="mt-1 text-[10px] text-mist-300">
+                        Preview: {stableStringify({ input: test.input, expected: test.expected })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="glass rounded-2xl p-5 space-y-3">
             <h3 className="font-display text-lg">Import / Export</h3>

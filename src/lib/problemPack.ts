@@ -1,9 +1,10 @@
 import { Problem, ProblemPack } from '../types/problem';
+import { SystemDesignPrompt } from '../types/systemDesign';
 
 const OVERLAY_KEY = 'dsa-gym-overlay-pack';
 const OVERLAY_ENABLED_KEY = 'dsa-gym-overlay-enabled';
 
-export type OverlayPack = ProblemPack;
+export type OverlayPack = ProblemPack & { systemDesignPrompts?: SystemDesignPrompt[] };
 
 export const loadOverlayPack = (): OverlayPack | null => {
   const raw = localStorage.getItem(OVERLAY_KEY);
@@ -38,5 +39,16 @@ export const mergePacks = (base: Problem[], overlay?: Problem[]): Problem[] => {
   const map = new Map<string, Problem>();
   base.forEach((problem) => map.set(problem.id, problem));
   overlay.forEach((problem) => map.set(problem.id, problem));
+  return Array.from(map.values());
+};
+
+export const mergeSystemDesignPacks = (
+  base: SystemDesignPrompt[],
+  overlay?: SystemDesignPrompt[]
+): SystemDesignPrompt[] => {
+  if (!overlay || overlay.length === 0) return base;
+  const map = new Map<string, SystemDesignPrompt>();
+  base.forEach((prompt) => map.set(prompt.id, prompt));
+  overlay.forEach((prompt) => map.set(prompt.id, prompt));
   return Array.from(map.values());
 };

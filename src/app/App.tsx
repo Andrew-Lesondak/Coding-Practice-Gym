@@ -6,6 +6,9 @@ import Catalog from '../pages/Catalog';
 import ProblemDetail from '../pages/ProblemDetail';
 import Settings from '../pages/Settings';
 import Author from '../pages/Author';
+import SystemDesignDashboard from '../pages/SystemDesignDashboard';
+import SystemDesignCatalog from '../pages/SystemDesignCatalog';
+import SystemDesignDetail from '../pages/SystemDesignDetail';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 
@@ -42,6 +45,9 @@ const App = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/problem/:id" element={<ProblemDetail />} />
+        <Route path="/system-design" element={<SystemDesignDashboard />} />
+        <Route path="/system-design/catalog" element={<SystemDesignCatalog />} />
+        <Route path="/system-design/:id" element={<SystemDesignDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />

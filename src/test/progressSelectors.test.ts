@@ -11,9 +11,11 @@ describe('progress selectors', () => {
           passes: 1,
           stepCompletion: {},
           reviewIntervalDays: 2,
-          easeFactor: 2.3
+          easeFactor: 2.3,
+          explanationHistory: []
         }
-      }
+      },
+      systemDesign: {}
     };
 
     const stats = getStats(problems, state);

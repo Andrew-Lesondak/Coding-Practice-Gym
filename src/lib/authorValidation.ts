@@ -2,6 +2,8 @@ import ts from 'typescript';
 import { parseSteps, parseTodoRegions } from './guidedStub';
 import { Problem } from '../types/problem';
 import { runInWorker } from './runnerClient';
+import { parseDesignSteps, parseTemplateRegions } from './systemDesignStub';
+import { SystemDesignPrompt } from '../types/systemDesign';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -63,6 +65,49 @@ export const validateStepMarkers = (stub: string): ValidationMessage[] => {
 
   messages.push(...getTodoMarkerIssues(stub));
 
+  return messages;
+};
+
+export const validateDesignStepMarkers = (markdown: string): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  const steps = parseDesignSteps(markdown);
+  if (steps.length === 0) {
+    messages.push({ type: 'error', message: 'No design step headers found.' });
+    return messages;
+  }
+  const sequential = steps.map((step, index) => step.index === index + 1).every(Boolean);
+  if (!sequential) {
+    messages.push({ type: 'error', message: 'Design step numbers must be sequential starting at 1.' });
+  }
+  const regions = parseTemplateRegions(markdown);
+  const regionSteps = new Set(regions.map((region) => region.stepIndex));
+  steps.forEach((step) => {
+    if (!regionSteps.has(step.index)) {
+      messages.push({ type: 'error', message: `Step ${step.index} is missing a TEMPLATE_START/END region.` });
+    }
+  });
+  return messages;
+};
+
+export const validateRubric = (rubric: SystemDesignPrompt['rubric']): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (!rubric || rubric.categories.length === 0) {
+    messages.push({ type: 'error', message: 'Rubric must have at least one category.' });
+    return messages;
+  }
+  rubric.categories.forEach((category) => {
+    if (category.weight <= 0) {
+      messages.push({ type: 'error', message: `Category ${category.title} must have weight > 0.` });
+    }
+    if (category.items.length === 0) {
+      messages.push({ type: 'error', message: `Category ${category.title} must have items.` });
+    }
+    category.items.forEach((item) => {
+      if (item.weight <= 0) {
+        messages.push({ type: 'error', message: `Rubric item ${item.text} must have weight > 0.` });
+      }
+    });
+  });
   return messages;
 };
 

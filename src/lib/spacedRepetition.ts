@@ -2,11 +2,21 @@ import { ProblemProgress } from '../types/progress';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const updateSchedule = (
-  progress: ProblemProgress,
+type ScheduleState = {
+  reviewIntervalDays: number;
+  easeFactor: number;
+};
+
+export const updateScheduleGeneric = <T extends ScheduleState>(
+  progress: T,
   difficulty: number,
   confidence: number
-): ProblemProgress => {
+): T & {
+  reviewIntervalDays: number;
+  easeFactor: number;
+  nextReviewAt: string;
+  lastRating: { difficulty: number; confidence: number };
+} => {
   const rating = clamp(Math.round((difficulty + (6 - confidence)) / 2), 1, 5);
   const easeDelta = 0.1 - (5 - rating) * 0.08;
   const easeFactor = clamp(progress.easeFactor + easeDelta, 1.3, 2.8);
@@ -26,3 +36,9 @@ export const updateSchedule = (
     }
   };
 };
+
+export const updateSchedule = (
+  progress: ProblemProgress,
+  difficulty: number,
+  confidence: number
+): ProblemProgress => updateScheduleGeneric(progress, difficulty, confidence) as ProblemProgress;

@@ -5,21 +5,25 @@ import { StepStatus } from '../types/progress';
 const StepList = ({
   steps,
   completion,
-  activeStep
+  activeStep,
+  onSelect
 }: {
   steps: Step[];
   completion: Record<number, StepStatus>;
   activeStep: number;
+  onSelect?: (stepIndex: number) => void;
 }) => {
   return (
     <div className="space-y-3">
       {steps.map((step) => {
         const status = completion[step.index] ?? 'not_started';
         return (
-          <div
+          <button
             key={step.index}
+            type="button"
+            onClick={() => onSelect?.(step.index)}
             className={clsx(
-              'rounded-xl border px-4 py-3 transition',
+              'w-full rounded-xl border px-4 py-3 text-left transition',
               step.index === activeStep
                 ? 'border-ember-500/60 bg-ember-500/10'
                 : 'border-white/10'
@@ -41,7 +45,7 @@ const StepList = ({
               </span>
             </div>
             <p className="text-xs text-mist-200">{step.title}</p>
-          </div>
+          </button>
         );
       })}
     </div>

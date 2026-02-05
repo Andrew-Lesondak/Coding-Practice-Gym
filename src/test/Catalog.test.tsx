@@ -6,7 +6,7 @@ import { useAppStore } from '../store/useAppStore';
 describe('Catalog page', () => {
   beforeEach(() => {
     useAppStore.setState({
-      progress: { problems: {} },
+      progress: { problems: {}, systemDesign: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false }
     });
   });

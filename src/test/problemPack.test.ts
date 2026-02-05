@@ -1,5 +1,6 @@
-import { mergePacks } from '../lib/problemPack';
+import { mergePacks, mergeSystemDesignPacks } from '../lib/problemPack';
 import { Problem } from '../types/problem';
+import { SystemDesignPrompt } from '../types/systemDesign';
 
 describe('mergePacks', () => {
   const base: Problem = {
@@ -30,5 +31,30 @@ describe('mergePacks', () => {
     const extra: Problem = { ...base, id: 'b', title: 'Extra' };
     const merged = mergePacks([base], [extra]);
     expect(merged).toHaveLength(2);
+  });
+});
+
+describe('mergeSystemDesignPacks', () => {
+  const basePrompt: SystemDesignPrompt = {
+    id: 'sd1',
+    title: 'Base',
+    difficulty: 'easy',
+    domain: 'web',
+    tags: [],
+    promptMarkdown: '',
+    requirements: { functional: [], nonFunctional: [] },
+    scale: { traffic: '', storage: '', retention: '' },
+    constraints: [],
+    guidedDesignStubMarkdown: '',
+    rubric: { categories: [] },
+    reference: { overviewMarkdown: '', keyDecisions: [] },
+    recallQuestions: [],
+    commonPitfalls: []
+  };
+
+  it('overlays by id', () => {
+    const overlay = { ...basePrompt, title: 'Overlay' };
+    const merged = mergeSystemDesignPacks([basePrompt], [overlay]);
+    expect(merged[0].title).toBe('Overlay');
   });
 });

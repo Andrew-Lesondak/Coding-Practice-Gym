@@ -11,5 +11,6 @@ describe('store migration', () => {
     const migrated = migrateStore(legacyState, 1) as any;
     expect(migrated.progress.problems.demo.explanationHistory).toBeDefined();
     expect(Array.isArray(migrated.progress.problems.demo.explanationHistory)).toBe(true);
+    expect(migrated.progress.systemDesign).toBeDefined();
   });
 });
