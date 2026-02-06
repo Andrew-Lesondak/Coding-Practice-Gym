@@ -30,10 +30,10 @@ describe('AdaptiveDashboard', () => {
     renderWithRouter();
     fireEvent.click(screen.getByText('Generate plan'));
     const removeButtons = screen.getAllByText('Remove');
-    const initialBlocks = screen.getAllByText(/min/).length;
+    const initialButtons = removeButtons.length;
     fireEvent.click(removeButtons[0]);
-    const afterBlocks = screen.getAllByText(/min/).length;
-    expect(afterBlocks).toBeLessThan(initialBlocks);
+    const afterButtons = screen.getAllByText('Remove').length;
+    expect(afterButtons).toBeLessThan(initialButtons);
   });
 
   it('allows replacing a block with a compatible candidate', () => {

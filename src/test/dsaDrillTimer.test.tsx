@@ -3,10 +3,9 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import DSADrillDetail from '../pages/DSADrillDetail';
 
-vi.useFakeTimers();
-
 describe('DSA drill timer', () => {
   it('moves to review on timeout', () => {
+    vi.useFakeTimers();
     render(
       <MemoryRouter initialEntries={["/dsa/drills/pattern-two-sum"]}>
         <Routes>
@@ -21,9 +20,5 @@ describe('DSA drill timer', () => {
       vi.advanceTimersByTime(3 * 60 * 1000);
     });
     expect(screen.getByText('Reference snippet')).toBeInTheDocument();
-  });
-
-  afterAll(() => {
-    vi.useRealTimers();
   });
 });

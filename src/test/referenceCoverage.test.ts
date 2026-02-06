@@ -13,7 +13,7 @@ describe('reference coverage', () => {
   });
 
   it('returns false when not mentioned', () => {
-    const text = 'Use a database only.';
+    const text = 'Ledger and audit logs only.';
     expect(isDecisionMentioned(decision as any, text)).toBe(false);
   });
 });

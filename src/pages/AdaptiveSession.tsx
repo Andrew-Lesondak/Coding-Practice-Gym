@@ -5,7 +5,7 @@ import CodeEditor from '../components/CodeEditor';
 import StepList from '../components/StepList';
 import TestResults from '../components/TestResults';
 import SystemDesignRubric from '../components/SystemDesignRubric';
-import { AdaptiveBlock, AdaptiveBlockOutcome, AdaptiveSessionRun } from '../types/adaptive';
+import { AdaptiveBlockOutcome, AdaptiveSessionRun } from '../types/adaptive';
 import { getAdaptivePlan, saveAdaptiveRun, loadAdaptiveRuns } from '../lib/adaptiveStorage';
 import { problems } from '../data/problems';
 import { dsaDrills } from '../data/dsaDrills';
@@ -15,7 +15,7 @@ import { parseEditRegions, isEditAllowed } from '../lib/dsaDrillEditRegions';
 import { runInWorker, RunResponse } from '../lib/runnerClient';
 import { getDrillTests } from '../lib/dsaDrillRunner';
 import { computeDesignStepStatus, parseDesignSteps } from '../lib/systemDesignStub';
-import { computeScore } from '../lib/systemDesignRubric';
+import { computeRubricScore } from '../lib/systemDesignRubric';
 import { useAppStore, getProblemProgress, getSystemDesignProgress, getSystemDesignDrillProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
 import { saveDrillAttempt } from '../lib/dsaDrillStorage';
@@ -106,6 +106,42 @@ const AdaptiveSession = () => {
       setRubricChecks({});
     }
   }, [block?.id]);
+
+  const designSteps = useMemo(() => {
+    if (!block) return [];
+    const prompt = systemDesignPrompts.find((p) => p.id === block.targetId);
+    const drill = systemDesignDrills.find((d) => d.id === block.targetId);
+    return parseDesignSteps(drill?.starterTemplateMarkdown ?? prompt?.guidedDesignStubMarkdown ?? '');
+  }, [block]);
+
+  const designCompletion = useMemo(() => {
+    if (!block) return {};
+    const prompt = systemDesignPrompts.find((p) => p.id === block.targetId);
+    const drill = systemDesignDrills.find((d) => d.id === block.targetId);
+    const base = drill?.starterTemplateMarkdown ?? prompt?.guidedDesignStubMarkdown ?? '';
+    return computeDesignStepStatus(designText, base);
+  }, [designText, block]);
+
+  const regions = useMemo(() => {
+    if (!block) return [];
+    const drill = dsaDrills.find((d) => d.id === block.targetId);
+    if (!drill) return [];
+    return parseEditRegions(code, drill.allowedEditRegions);
+  }, [code, block]);
+
+  useEffect(() => {
+    if (!locked || !block.timed || autoCompleted) return;
+    setAutoCompleted(true);
+    if (block.blockType === 'dsa_drill' || block.blockType === 'dsa_timed_problem') {
+      runTests().then((result) => finalizeDSA(result));
+      return;
+    }
+    if (block.blockType === 'sd_drill' || block.blockType === 'sd_timed_prompt') {
+      finalizeSD();
+      return;
+    }
+    handleOutcome({});
+  }, [locked, block, autoCompleted]);
 
   if (!plan || !block) {
     return (
@@ -201,7 +237,7 @@ const AdaptiveSession = () => {
   const runTests = async () => {
     const drill = dsaDrills.find((d) => d.id === block.targetId);
     const problem = problems.find((p) => p.id === block.targetId) ?? problems.find((p) => p.id === drill?.problemId);
-    if (!problem) return;
+    if (!problem) return undefined;
     const tests = drill ? getDrillTests(problem, drill) : problem.tests.visible;
     const result = await runInWorker({
       code,
@@ -252,7 +288,7 @@ const AdaptiveSession = () => {
     const drill = systemDesignDrills.find((d) => d.id === block.targetId);
     const prompt = systemDesignPrompts.find((p) => p.id === block.targetId);
     const rubric = drill ? prompt?.rubric ?? systemDesignPrompts[0]?.rubric : prompt?.rubric;
-    const score = rubric ? computeScore(rubric, rubricChecks).overall : 0;
+    const score = rubric ? computeRubricScore(rubric, rubricChecks).overall : 0;
     if (drill) {
       const current = getSystemDesignDrillProgress(progress, drill.id);
       const next = {
@@ -281,38 +317,7 @@ const AdaptiveSession = () => {
     handleOutcome({ score });
   };
 
-  useEffect(() => {
-    if (!locked || !block.timed || autoCompleted) return;
-    setAutoCompleted(true);
-    if (block.blockType === 'dsa_drill' || block.blockType === 'dsa_timed_problem') {
-      runTests().then((result) => finalizeDSA(result));
-      return;
-    }
-    if (block.blockType === 'sd_drill' || block.blockType === 'sd_timed_prompt') {
-      finalizeSD();
-      return;
-    }
-    handleOutcome({});
-  }, [locked, block, autoCompleted]);
 
-  const designSteps = useMemo(() => {
-    const prompt = systemDesignPrompts.find((p) => p.id === block.targetId);
-    const drill = systemDesignDrills.find((d) => d.id === block.targetId);
-    return parseDesignSteps(drill?.starterTemplateMarkdown ?? prompt?.guidedDesignStubMarkdown ?? '');
-  }, [block]);
-
-  const designCompletion = useMemo(() => {
-    const prompt = systemDesignPrompts.find((p) => p.id === block.targetId);
-    const drill = systemDesignDrills.find((d) => d.id === block.targetId);
-    const base = drill?.starterTemplateMarkdown ?? prompt?.guidedDesignStubMarkdown ?? '';
-    return computeDesignStepStatus(designText, base);
-  }, [designText, block]);
-
-  const regions = useMemo(() => {
-    const drill = dsaDrills.find((d) => d.id === block.targetId);
-    if (!drill) return [];
-    return parseEditRegions(code, drill.allowedEditRegions);
-  }, [code, block]);
 
   const onCodeChange = (next: string) => {
     if (!started) setStarted(true);
@@ -353,12 +358,12 @@ const AdaptiveSession = () => {
     if (block.blockType === 'dsa_drill' || block.blockType === 'dsa_timed_problem') {
       return (
         <div className="space-y-4">
-          <CodeEditor value={code} language="typescript" onChange={onCodeChange} readOnly={locked} />
+          <CodeEditor value={code} language="typescript" onChange={onCodeChange} />
           <div className="flex flex-wrap gap-2">
             <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={runTests}>
               Run tests
             </button>
-            <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={finalizeDSA}>
+            <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={() => finalizeDSA()}>
               Finish block
             </button>
           </div>
@@ -398,7 +403,7 @@ const AdaptiveSession = () => {
                 rubric={rubric}
                 checked={rubricChecks}
                 suggestions={{}}
-                scores={computeScore(rubric, rubricChecks)}
+                scores={computeRubricScore(rubric, rubricChecks)}
                 onToggle={(itemId, checked) => {
                   if (locked) return;
                   setRubricChecks((prev) => ({ ...prev, [itemId]: checked }));

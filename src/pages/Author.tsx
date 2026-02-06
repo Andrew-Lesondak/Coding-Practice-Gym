@@ -165,7 +165,7 @@ const Author = () => {
 
   const importJson = () => {
     try {
-      const parsed = JSON.parse(jsonBlob) as Problem | SystemDesignPrompt;
+      const parsed = JSON.parse(jsonBlob) as unknown;
       if (mode === 'dsa') {
         setDraft(parsed as Problem);
       } else if (mode === 'system') {

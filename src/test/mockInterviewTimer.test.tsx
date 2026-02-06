@@ -6,10 +6,9 @@ import { createMockSession } from '../lib/mockInterview';
 import { saveMockSession } from '../lib/mockInterviewStorage';
 import { systemDesignDrills } from '../data/systemDesignDrills';
 
-vi.useFakeTimers();
-
 describe('mock interview timer', () => {
   it('locks editor on timeout', () => {
+    vi.useFakeTimers();
     const session = createMockSession('url-shortener', systemDesignDrills, 'easy');
     saveMockSession(session);
 
@@ -26,8 +25,6 @@ describe('mock interview timer', () => {
       vi.advanceTimersByTime(5 * 60 * 1000);
     });
     expect(screen.getByRole('button', { name: 'End phase early' })).toBeInTheDocument();
-  });
-  afterAll(() => {
     vi.useRealTimers();
   });
 });

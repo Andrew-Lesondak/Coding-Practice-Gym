@@ -1,6 +1,5 @@
 import { problems } from '../../data/problems';
 import { systemDesignDrills } from '../../data/systemDesignDrills';
-import { systemDesignPrompts } from '../../data/systemDesignPrompts';
 import { loadDrillAttempts } from '../dsaDrillStorage';
 import { loadMockSessions } from '../mockInterviewStorage';
 import { patternToRubricCategory } from './mappings';

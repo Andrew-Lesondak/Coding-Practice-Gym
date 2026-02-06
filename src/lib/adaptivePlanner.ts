@@ -12,9 +12,12 @@ import {
 } from './analytics/engine';
 import { DSASpeedDrillStats, DSAProblemStats, SystemDesignDrillStats } from './analytics/types';
 import { loadDrillAttempts } from './dsaDrillStorage';
+import { Difficulty } from '../types/problem';
 
 export type AdaptiveMode = AdaptiveSessionPlan['mode'];
 export type AdaptiveIntensity = AdaptiveSessionPlan['intensity'];
+
+type LowerDifficulty = 'easy' | 'medium' | 'hard';
 
 type Candidate = {
   id: string;
@@ -29,7 +32,19 @@ type Candidate = {
   confidenceMismatch?: boolean;
   lastAttemptedAt?: string;
   score?: number;
-  difficulty?: "easy" | "medium" | "hard";
+  difficulty?: LowerDifficulty;
+};
+
+type CandidatePools = {
+  dueDSA: Candidate[];
+  dueSD: Candidate[];
+  dueSDDrills: Candidate[];
+  dsaWeaknessCandidates: Candidate[];
+  dsaDrillCandidates: Candidate[];
+  sdDrillCandidates: Candidate[];
+  sdPromptCandidates: Candidate[];
+  speedGapPatterns: Set<string>;
+  weakestPatterns: string[];
 };
 
 type PlannerInputs = {
@@ -52,6 +67,16 @@ const mulberry32 = (seed: number) => {
 };
 
 const toId = (value: string) => value.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+
+const normalizeDifficulty = (difficulty?: Difficulty | LowerDifficulty): LowerDifficulty | undefined => {
+  if (!difficulty) return undefined;
+  if (typeof difficulty === 'string') {
+    if (difficulty === 'Easy') return 'easy';
+    if (difficulty === 'Medium') return 'medium';
+    if (difficulty === 'Hard') return 'hard';
+  }
+  return difficulty as LowerDifficulty;
+};
 
 const getOverdueDays = (nextReviewAt?: string) => {
   if (!nextReviewAt) return 0;
@@ -91,7 +116,7 @@ const determineSDFailureMode = (sdDrillStats: SystemDesignDrillStats[]) => {
   return 'mixed';
 };
 
-export const buildCandidatePools = (progress: ProgressState) => {
+export const buildCandidatePools = (progress: ProgressState): CandidatePools => {
   const dsaStats = buildDSAProblemStats(progress);
   const drillStats = buildDSASpeedDrillStats();
   const sdDrillStats = buildSystemDesignDrillStats(progress);
@@ -141,7 +166,7 @@ export const buildCandidatePools = (progress: ProgressState) => {
     return drillAvg >= 0.7 && mockAvg > 0 && mockAvg <= 0.5;
   })();
 
-  const dueDSA = problems
+  const dueDSA: Candidate[] = problems
     .filter((problem) => getOverdueDays(progress.problems[problem.id]?.nextReviewAt) > 0)
     .map((problem) => ({
       id: `due-dsa-${problem.id}`,
@@ -150,10 +175,11 @@ export const buildCandidatePools = (progress: ProgressState) => {
       minutes: 8,
       due: true,
       overdueDays: getOverdueDays(progress.problems[problem.id]?.nextReviewAt),
-      lastAttemptedAt: progress.problems[problem.id]?.lastAttemptedAt
+      lastAttemptedAt: progress.problems[problem.id]?.lastAttemptedAt,
+      difficulty: normalizeDifficulty(problem.difficulty)
     }));
 
-  const dueSD = systemDesignPrompts
+  const dueSD: Candidate[] = systemDesignPrompts
     .filter((prompt) => getOverdueDays(progress.systemDesign[prompt.id]?.nextReviewAt) > 0)
     .map((prompt) => ({
       id: `due-sd-${prompt.id}`,
@@ -162,10 +188,11 @@ export const buildCandidatePools = (progress: ProgressState) => {
       minutes: 12,
       due: true,
       overdueDays: getOverdueDays(progress.systemDesign[prompt.id]?.nextReviewAt),
-      lastAttemptedAt: progress.systemDesign[prompt.id]?.lastAttemptedAt
+      lastAttemptedAt: progress.systemDesign[prompt.id]?.lastAttemptedAt,
+      difficulty: normalizeDifficulty(prompt.difficulty)
     }));
 
-  const dueSDDrills = systemDesignDrills
+  const dueSDDrills: Candidate[] = systemDesignDrills
     .filter((drill) => getOverdueDays(progress.systemDesignDrills[drill.id]?.nextReviewAt) > 0)
     .map((drill) => ({
       id: `due-sd-drill-${drill.id}`,
@@ -174,10 +201,11 @@ export const buildCandidatePools = (progress: ProgressState) => {
       minutes: Math.min(12, Math.max(6, drill.timeLimitMinutes)),
       due: true,
       overdueDays: getOverdueDays(progress.systemDesignDrills[drill.id]?.nextReviewAt),
-      lastAttemptedAt: progress.systemDesignDrills[drill.id]?.lastAttemptedAt
+      lastAttemptedAt: progress.systemDesignDrills[drill.id]?.lastAttemptedAt,
+      difficulty: normalizeDifficulty(drill.difficulty)
     }));
 
-  const dsaWeaknessCandidates = problems
+  const dsaWeaknessCandidates: Candidate[] = problems
     .filter((problem) => problem.patterns.some((p) => weakestPatterns.includes(p)))
     .map((problem) => ({
       id: `weak-dsa-${problem.id}`,
@@ -186,7 +214,7 @@ export const buildCandidatePools = (progress: ProgressState) => {
       minutes: 12,
       weaknessTag: problem.patterns.find((p) => weakestPatterns.includes(p)),
       lastAttemptedAt: progress.problems[problem.id]?.lastAttemptedAt,
-      difficulty: problem.difficulty,
+      difficulty: normalizeDifficulty(problem.difficulty),
       score: progress.problems[problem.id]?.attempts
         ? (progress.problems[problem.id]?.passes ?? 0) / (progress.problems[problem.id]?.attempts ?? 1)
         : 0
@@ -194,12 +222,12 @@ export const buildCandidatePools = (progress: ProgressState) => {
 
   const drillAttempts = loadDrillAttempts();
 
-  const dsaDrillCandidates = dsaDrills.map((drill) => ({
+  const dsaDrillCandidates: Candidate[] = dsaDrills.map((drill) => ({
     id: `dsa-drill-${drill.id}`,
     blockType: 'dsa_drill' as const,
     targetId: drill.id,
     minutes: Math.min(10, Math.max(5, drill.timeLimitMinutes)),
-    difficulty: drill.difficulty,
+    difficulty: normalizeDifficulty(drill.difficulty),
     weaknessTag: problems.find((p) => p.id === drill.problemId)?.patterns[0] ?? drill.drillType,
     speedGap: (problems.find((p) => p.id === drill.problemId)?.patterns ?? []).some((tag) => speedGapPatterns.has(tag)),
     confidenceMismatch: (problems.find((p) => p.id === drill.problemId)?.patterns ?? []).some((tag) => overconfidence.has(tag)),
@@ -208,22 +236,22 @@ export const buildCandidatePools = (progress: ProgressState) => {
       .sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0]?.completedAt
   }));
 
-  const sdDrillCandidates = systemDesignDrills.map((drill) => ({
+  const sdDrillCandidates: Candidate[] = systemDesignDrills.map((drill) => ({
     id: `sd-drill-${drill.id}`,
     blockType: 'sd_drill' as const,
     targetId: drill.id,
     minutes: Math.min(12, Math.max(6, drill.timeLimitMinutes)),
-    difficulty: drill.difficulty,
+    difficulty: normalizeDifficulty(drill.difficulty),
     weaknessTag: drill.rubricSubset.categoryIds[0],
     transferGap: sdTransferGap
   }));
 
-  const sdPromptCandidates = systemDesignPrompts.map((prompt) => ({
+  const sdPromptCandidates: Candidate[] = systemDesignPrompts.map((prompt) => ({
     id: `sd-prompt-${prompt.id}`,
     blockType: 'sd_timed_prompt' as const,
     targetId: prompt.id,
     minutes: 15,
-    difficulty: prompt.difficulty,
+    difficulty: normalizeDifficulty(prompt.difficulty),
     weaknessTag: prompt.domain,
     transferGap: sdTransferGap,
     lastAttemptedAt: progress.systemDesign[prompt.id]?.lastAttemptedAt
@@ -242,10 +270,7 @@ export const buildCandidatePools = (progress: ProgressState) => {
   };
 };
 
-export const scoreCandidate = (
-  candidate: Candidate,
-  usedTags: string[]
-): number => {
+export const scoreCandidate = (candidate: Candidate, usedTags: string[]): number => {
   const reviewUrgencyScore = candidate.due ? clamp(candidate.overdueDays ?? 0, 0, 5) : 0;
   const weaknessSeverityScore = candidate.score !== undefined ? clamp((1 - candidate.score) * 3, 0, 3) : 0;
   const speedGapScore = candidate.speedGap ? 2 : 0;
@@ -259,7 +284,11 @@ export const scoreCandidate = (
     return 0;
   })();
   const repetitionPenaltyScore = candidate.weaknessTag && usedTags.includes(candidate.weaknessTag) ? 1 : 0;
-  const repeatTargetPenalty = !candidate.due && candidate.lastAttemptedAt ? ( (Date.now() - new Date(candidate.lastAttemptedAt).getTime()) / dayMs <= 7 ? 3 : 0) : 0;
+  const repeatTargetPenalty = !candidate.due && candidate.lastAttemptedAt
+    ? (Date.now() - new Date(candidate.lastAttemptedAt).getTime()) / dayMs <= 7
+      ? 3
+      : 0
+    : 0;
 
   return (
     reviewUrgencyScore +
@@ -273,7 +302,12 @@ export const scoreCandidate = (
   );
 };
 
-const pickCandidate = (candidates: Candidate[], seed: number, usedTags: string[], opts?: { preferredDifficulty?: Candidate["difficulty"]; excludeTag?: string }) => {
+const pickCandidate = (
+  candidates: Candidate[],
+  seed: number,
+  usedTags: string[],
+  opts?: { preferredDifficulty?: Candidate['difficulty']; excludeTag?: string }
+) => {
   if (!candidates.length) return null;
   const filtered = opts?.preferredDifficulty ? candidates.filter((c) => c.difficulty === opts.preferredDifficulty) : candidates;
   const pool = filtered.length ? filtered : candidates;
@@ -364,7 +398,7 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
   const dominantSD = determineSDFailureMode(sdDrillStats);
   let template = fallbackTemplate(mode, lengthMinutes, intensity);
   const hasReview = template.some((block) => block.blockType === 'dsa_review' || block.blockType === 'sd_review');
-  const hasDue = (pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length) > 0;
+  const hasDue = pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length > 0;
   if (intensity === 'chill' && hasDue && !hasReview) {
     template = [{ blockType: mode === 'dsa' ? 'dsa_review' : 'sd_review', minutes: 8, timed: false, userEditable: true }, ...template.slice(1)];
   }
@@ -385,39 +419,39 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
     if (usedTags.length < 2) return undefined;
     const last = usedTags[usedTags.length - 1];
     const prev = usedTags[usedTags.length - 2];
-    return last && last == prev ? last : undefined;
+    return last && last === prev ? last : undefined;
   };
 
   const blocks: AdaptiveBlock[] = template.map((slot) => {
     let candidate: Candidate | null = null;
     if (slot.blockType === 'dsa_review') {
       const isFirst = dsaBlockIndex === 0;
-      candidate = pickCandidate(pools.dueDSA as Candidate[], seed + counter, usedTags) ?? pickCandidate(pools.dsaWeaknessCandidates as Candidate[], seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : undefined, excludeTag: getExcludeTag() });
+      candidate = pickCandidate(pools.dueDSA, seed + counter, usedTags) ?? pickCandidate(pools.dsaWeaknessCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : undefined, excludeTag: getExcludeTag() });
       dsaBlockIndex += 1;
     }
     if (slot.blockType === 'dsa_drill') {
       const isFirst = dsaBlockIndex === 0;
-      candidate = pickCandidate(pools.dsaDrillCandidates as Candidate[], seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : undefined, excludeTag: getExcludeTag() });
+      candidate = pickCandidate(pools.dsaDrillCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : undefined, excludeTag: getExcludeTag() });
       dsaBlockIndex += 1;
     }
     if (slot.blockType === 'dsa_timed_problem') {
       const isFirst = dsaBlockIndex === 0;
-      candidate = pickCandidate(pools.dsaWeaknessCandidates as Candidate[], seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : includeHardDSA ? "hard" : undefined, excludeTag: getExcludeTag() }) ?? pickCandidate(pools.dueDSA as Candidate[], seed + counter, usedTags);
+      candidate = pickCandidate(pools.dsaWeaknessCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : includeHardDSA ? 'hard' : undefined, excludeTag: getExcludeTag() }) ?? pickCandidate(pools.dueDSA, seed + counter, usedTags);
       dsaBlockIndex += 1;
     }
     if (slot.blockType === 'sd_review') {
       const isFirst = sdBlockIndex === 0;
-      candidate = pickCandidate(pools.dueSD as Candidate[], seed + counter, usedTags) ?? pickCandidate(pools.sdPromptCandidates as Candidate[], seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : undefined, excludeTag: getExcludeTag() });
+      candidate = pickCandidate(pools.dueSD, seed + counter, usedTags) ?? pickCandidate(pools.sdPromptCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : undefined, excludeTag: getExcludeTag() });
       sdBlockIndex += 1;
     }
     if (slot.blockType === 'sd_drill') {
       const isFirst = sdBlockIndex === 0;
-      candidate = pickCandidate(pools.sdDrillCandidates as Candidate[], seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : undefined, excludeTag: getExcludeTag() });
+      candidate = pickCandidate(pools.sdDrillCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : undefined, excludeTag: getExcludeTag() });
       sdBlockIndex += 1;
     }
     if (slot.blockType === 'sd_timed_prompt') {
       const isFirst = sdBlockIndex === 0;
-      candidate = pickCandidate(pools.sdPromptCandidates as Candidate[], seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : includeHardSD ? "hard" : undefined, excludeTag: getExcludeTag() });
+      candidate = pickCandidate(pools.sdPromptCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : includeHardSD ? 'hard' : undefined, excludeTag: getExcludeTag() });
       sdBlockIndex += 1;
     }
     if (!candidate) {
@@ -465,10 +499,9 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
     return block;
   });
 
-  const dueReviewCount = pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length;
   const summary = {
     primaryFocus: [mode === 'dsa' ? dominantDSA : dominantSD],
-    dueReviewCount,
+    dueReviewCount: pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length,
     estimatedTotalMinutes: blocks.reduce((acc, block) => acc + block.minutes, 0)
   };
 
@@ -491,12 +524,12 @@ export const getReplacementCandidates = (
 ) => {
   const pools = buildCandidatePools(progress);
   const candidates: Candidate[] = [];
-  if (blockType === 'dsa_review') candidates.push(...(pools.dueDSA as Candidate[]), ...(pools.dsaWeaknessCandidates as Candidate[]));
-  if (blockType === 'dsa_drill') candidates.push(...(pools.dsaDrillCandidates as Candidate[]));
-  if (blockType === 'dsa_timed_problem') candidates.push(...(pools.dsaWeaknessCandidates as Candidate[]));
-  if (blockType === 'sd_review') candidates.push(...(pools.dueSD as Candidate[]));
-  if (blockType === 'sd_drill') candidates.push(...(pools.sdDrillCandidates as Candidate[]));
-  if (blockType === 'sd_timed_prompt') candidates.push(...(pools.sdPromptCandidates as Candidate[]));
+  if (blockType === 'dsa_review') candidates.push(...pools.dueDSA, ...pools.dsaWeaknessCandidates);
+  if (blockType === 'dsa_drill') candidates.push(...pools.dsaDrillCandidates);
+  if (blockType === 'dsa_timed_problem') candidates.push(...pools.dsaWeaknessCandidates);
+  if (blockType === 'sd_review') candidates.push(...pools.dueSD);
+  if (blockType === 'sd_drill') candidates.push(...pools.sdDrillCandidates);
+  if (blockType === 'sd_timed_prompt') candidates.push(...pools.sdPromptCandidates);
 
   const filtered = weaknessTag ? candidates.filter((c) => c.weaknessTag === weaknessTag) : candidates;
   return filtered.map((candidate) => ({

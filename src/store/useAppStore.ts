@@ -86,6 +86,7 @@ export const useAppStore = create<AppState>()(
           const current = state.progress.problems[problemId] ?? createDefaultProgress();
           return {
             progress: {
+              ...state.progress,
               problems: {
                 ...state.progress.problems,
                 [problemId]: { ...current, ...patch }
@@ -98,6 +99,7 @@ export const useAppStore = create<AppState>()(
           const current = state.progress.problems[problemId] ?? createDefaultProgress();
           return {
             progress: {
+              ...state.progress,
               problems: {
                 ...state.progress.problems,
                 [problemId]: {
@@ -114,6 +116,7 @@ export const useAppStore = create<AppState>()(
       resetProblem: (problemId) =>
         set((state) => ({
           progress: {
+            ...state.progress,
             problems: {
               ...state.progress.problems,
               [problemId]: createDefaultProgress()
@@ -142,6 +145,7 @@ export const useAppStore = create<AppState>()(
           const nextHistory = existing ? [...history, existing] : history;
           return {
             progress: {
+              ...state.progress,
               problems: {
                 ...state.progress.problems,
                 [problemId]: {

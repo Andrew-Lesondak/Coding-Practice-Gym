@@ -1,12 +1,9 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
 import DSADrillDetail from '../pages/DSADrillDetail';
 
-vi.useFakeTimers();
-
 describe('DSA drill review', () => {
-  it('renders reference snippet', () => {
+  it('renders reference snippet', async () => {
     render(
       <MemoryRouter initialEntries={["/dsa/drills/core-loop-two-sum"]}>
         <Routes>
@@ -15,14 +12,10 @@ describe('DSA drill review', () => {
       </MemoryRouter>
     );
 
-    act(() => {
-      vi.advanceTimersByTime(6 * 60 * 1000);
+    await act(async () => {
+      fireEvent.click(screen.getByText('End drill'));
     });
 
-    expect(screen.getByText('Reference snippet')).toBeInTheDocument();
-  });
-
-  afterAll(() => {
-    vi.useRealTimers();
+    expect(await screen.findByText('Reference snippet')).toBeInTheDocument();
   });
 });

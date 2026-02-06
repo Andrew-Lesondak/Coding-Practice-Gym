@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import Settings from '../pages/Settings';
 import { useAppStore } from '../store/useAppStore';
 
@@ -11,7 +12,7 @@ describe('Settings page', () => {
   });
 
   it('toggles step lock', () => {
-    render(<Settings />);
+    render(<MemoryRouter><Settings /></MemoryRouter>);
     const button = screen.getByRole('button', { name: 'Enabled' });
     fireEvent.click(button);
     expect(screen.getByRole('button', { name: 'Disabled' })).toBeInTheDocument();

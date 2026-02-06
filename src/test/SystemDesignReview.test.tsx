@@ -53,7 +53,8 @@ describe('SystemDesign review flow', () => {
     expect(screen.getByText('Compare my last explanation')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Add to my design' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Practice' }));
-    const textarea = screen.getByRole('textbox');
-    expect(textarea).toHaveValue(expect.stringContaining('Decision:'));
+    const textareas = screen.getAllByRole('textbox');
+    const hasDecision = textareas.some((el) => (el as HTMLTextAreaElement).value.includes('Decision:'));
+    expect(hasDecision).toBe(true);
   });
 });

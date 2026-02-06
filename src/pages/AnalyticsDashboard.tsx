@@ -1,6 +1,5 @@
 import { useAppStore } from '../store/useAppStore';
 import { buildDSAProblemStats, buildDSASpeedDrillStats, buildSystemDesignDrillStats, buildMockInterviewStats, generateInsights } from '../lib/analytics/engine';
-import { patternToRubricCategory } from '../lib/analytics/mappings';
 
 const AnalyticsDashboard = () => {
   const progress = useAppStore((state) => state.progress);

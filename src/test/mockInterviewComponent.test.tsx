@@ -24,7 +24,7 @@ vi.mock('../lib/mockInterviewStorage', async () => {
 describe('mock interview dashboard', () => {
   it('renders last session', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/system-design/mock"]}>
         <Routes>
           <Route path="/system-design/mock" element={<SystemDesignMockDashboard />} />
         </Routes>

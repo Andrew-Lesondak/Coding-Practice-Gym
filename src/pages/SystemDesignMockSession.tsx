@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import StepList from '../components/StepList';
@@ -19,8 +19,6 @@ const SystemDesignMockSession = () => {
   const [content, setContent] = useState('');
   const [completion, setCompletion] = useState<Record<number, 'not_started' | 'in_progress' | 'completed'>>({});
   const [started, setStarted] = useState(false);
-  const [decision, setDecision] = useState('');
-  const [risk, setRisk] = useState('');
   const [wentWell, setWentWell] = useState('');
   const [change, setChange] = useState('');
   const [weakest, setWeakest] = useState('');
@@ -277,7 +275,6 @@ const SystemDesignMockSession = () => {
                 suggestions={rubricSuggestions}
                 scores={rubricScore}
                 onToggle={(itemId, checked) => {
-                  const target = drillId ?? 'full';
                   const responses = session.responses;
                   if (drillId) {
                     const current = responses.drillResponses[drillId] ?? { content: '', rubricChecks: {} };

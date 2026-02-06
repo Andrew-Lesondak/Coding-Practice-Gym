@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    setupFiles: './src/test/setup.ts'
+    setupFiles: './src/test/setup.ts',
+    globals: true,
+    forceExit: true,
+    hookTimeout: 10000,
+    teardownTimeout: 10000
   }
 });

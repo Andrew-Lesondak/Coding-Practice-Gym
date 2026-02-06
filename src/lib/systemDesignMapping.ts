@@ -8,6 +8,7 @@ const categoryStepMap: Record<string, number> = {
   data: 4,
   storage: 4,
   caching: 5,
+  cache: 5,
   consistency: 6,
   idempotency: 6,
   scaling: 7,
