@@ -147,12 +147,23 @@ self.onmessage = (event: MessageEvent<RunMessage>) => {
   };
 
   try {
-    (self as any).importScripts = undefined;
-    (self as any).fetch = undefined;
-    (self as any).XMLHttpRequest = undefined;
-    (self as any).WebSocket = undefined;
-    (self as any).navigator = undefined;
-    (self as any).location = undefined;
+    const safeUndef = (key: string) => {
+      try {
+        Object.defineProperty(self, key, { value: undefined, configurable: true });
+      } catch {
+        try {
+          (self as any)[key] = undefined;
+        } catch {
+          // ignore read-only globals
+        }
+      }
+    };
+    safeUndef('importScripts');
+    safeUndef('fetch');
+    safeUndef('XMLHttpRequest');
+    safeUndef('WebSocket');
+    safeUndef('navigator');
+    safeUndef('location');
     if (!(self as any).process) {
       (self as any).process = { env: { NODE_ENV: 'production' }, versions: {} };
     }
@@ -177,8 +188,6 @@ self.onmessage = (event: MessageEvent<RunMessage>) => {
       'const globalThis = undefined;',
       'const self = undefined;',
       'const postMessage = undefined;',
-      'const Function = undefined;',
-      'const eval = undefined;',
       'const importScripts = undefined;',
       'const fetch = undefined;',
       'const XMLHttpRequest = undefined;',

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useMemo } from 'react';
 import mermaid from 'mermaid';
 
 const MermaidEditor = ({
@@ -12,6 +12,7 @@ const MermaidEditor = ({
 }) => {
   const previewRef = useRef<HTMLDivElement>(null);
   const id = useId();
+  const safeId = useMemo(() => id.replace(/[^a-z0-9_-]/gi, ''), [id]);
 
   useEffect(() => {
     mermaid.initialize({ startOnLoad: false, theme: 'dark' });
@@ -25,7 +26,7 @@ const MermaidEditor = ({
         return;
       }
       try {
-        const { svg } = await mermaid.render(`mermaid-${id}`, value);
+        const { svg } = await mermaid.render(`mermaid-${safeId}`, value);
         previewRef.current.innerHTML = svg;
       } catch (error) {
         previewRef.current.innerHTML = `<p class="text-xs text-rose-300">Diagram error: ${String(
@@ -34,7 +35,7 @@ const MermaidEditor = ({
       }
     };
     render();
-  }, [value, id]);
+  }, [value, safeId]);
 
   return (
     <div className="space-y-3">

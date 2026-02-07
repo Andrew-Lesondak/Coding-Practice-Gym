@@ -60,14 +60,14 @@ export const computeDesignStepStatus = (current: string, original: string): Reco
       completion[region.stepIndex] = 'not_started';
       return;
     }
-    const currentHasCode = regionHasDesignContent(currentRegion.originalContent);
-    if (currentHasCode) {
-      completion[region.stepIndex] = 'completed';
-      return;
-    }
     const originalNorm = normalizeRegion(region.originalContent);
     const currentNorm = normalizeRegion(currentRegion.originalContent);
-    completion[region.stepIndex] = originalNorm !== currentNorm ? 'in_progress' : 'not_started';
+    if (originalNorm == currentNorm) {
+      completion[region.stepIndex] = 'not_started';
+      return;
+    }
+    const currentHasCode = regionHasDesignContent(currentRegion.originalContent);
+    completion[region.stepIndex] = currentHasCode ? 'completed' : 'in_progress';
   });
 
   return completion;

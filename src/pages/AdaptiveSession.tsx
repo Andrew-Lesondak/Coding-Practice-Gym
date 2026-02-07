@@ -130,7 +130,7 @@ const AdaptiveSession = () => {
   }, [code, block]);
 
   useEffect(() => {
-    if (!locked || !block.timed || autoCompleted) return;
+    if (!locked || !block?.timed || autoCompleted) return;
     setAutoCompleted(true);
     if (block.blockType === 'dsa_drill' || block.blockType === 'dsa_timed_problem') {
       runTests().then((result) => finalizeDSA(result));
