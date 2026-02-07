@@ -14,8 +14,8 @@ export type ValidationMessage = {
 
 const getTodoMarkerIssues = (stub: string) => {
   const issues: ValidationMessage[] = [];
-  const startRegex = /\/\/\s*TODO\(step\s+(\d+)\s+start\)/g;
-  const endRegex = /\/\/\s*TODO\(step\s+(\d+)\s+end\)/g;
+  const startRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+start\)/g;
+  const endRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+end\)/g;
   const startCounts = new Map<number, number>();
   const endCounts = new Map<number, number>();
   let match: RegExpExecArray | null;
@@ -52,10 +52,25 @@ export const validateStepMarkers = (stub: string): ValidationMessage[] => {
     return messages;
   }
 
-  const expected = steps.map((step, index) => step.index === index + 1).every(Boolean);
+  const topLevelSteps = steps.filter((step) => Number.isInteger(step.index));
+  const expected = topLevelSteps
+    .map((step, index) => step.index === index + 1)
+    .every(Boolean);
   if (!expected) {
-    messages.push({ type: 'error', message: 'Step numbers must be sequential starting at 1.' });
+    messages.push({ type: 'error', message: 'Top-level step numbers must be sequential starting at 1.' });
   }
+  steps.forEach((step) => {
+    if (Number.isInteger(step.index)) {
+      return;
+    }
+    const parentIndex = Math.floor(step.index);
+    if (!topLevelSteps.some((item) => item.index === parentIndex)) {
+      messages.push({
+        type: 'error',
+        message: `Nested step ${step.index} is missing its parent Step ${parentIndex}.`
+      });
+    }
+  });
 
   const regions = parseTodoRegions(stub);
   const regionSteps = new Set(regions.map((region) => region.stepIndex));

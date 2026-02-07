@@ -6,7 +6,13 @@ import StepList from '../components/StepList';
 import CodeEditor from '../components/CodeEditor';
 import TestResults from '../components/TestResults';
 import { useProblems } from '../lib/useProblems';
-import { computeStepCompletion, findLockedRegion, getFirstIncompleteStep, parseSteps } from '../lib/guidedStub';
+import {
+  computeStepCompletion,
+  findLockedRegion,
+  getFirstIncompleteStep,
+  parseSteps,
+  parseTodoRegions
+} from '../lib/guidedStub';
 import { runInWorker, RunResponse } from '../lib/runnerClient';
 import { updateSchedule } from '../lib/spacedRepetition';
 import { useAppStore, getProblemProgress } from '../store/useAppStore';
@@ -65,6 +71,12 @@ const ProblemDetail = () => {
   const saveExplanation = useAppStore((state) => state.saveExplanation);
 
   const steps = useMemo(() => (problem ? parseSteps(problem.guidedStub) : []), [problem]);
+  const regionSteps = useMemo(() => {
+    if (!problem) {
+      return new Set<number>();
+    }
+    return new Set(parseTodoRegions(problem.guidedStub).map((region) => region.stepIndex));
+  }, [problem]);
   const problemProgress = problem ? getProblemProgress(progress, problem.id) : undefined;
 
   useEffect(() => {
@@ -108,7 +120,7 @@ const ProblemDetail = () => {
     );
   }
 
-  const activeStep = getFirstIncompleteStep(completion, steps);
+  const activeStep = getFirstIncompleteStep(completion, steps, regionSteps);
 
   const onCodeChange = (next: string) => {
     if (settings.lockSteps && findLockedRegion(prevCodeRef.current, next, activeStep)) {
@@ -261,7 +273,7 @@ const ProblemDetail = () => {
       )}
 
       {activeTab === 'solve' && (
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
           <div className="space-y-4">
             {isDueForReview && problemProgress.explanation && (
               <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4 text-sm text-mist-200">

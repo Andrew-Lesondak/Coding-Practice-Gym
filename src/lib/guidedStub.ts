@@ -1,9 +1,9 @@
 import { Step, TodoRegion } from '../types/problem';
 import { StepStatus } from '../types/progress';
 
-const stepRegex = /^\s*\/\/\s*Step\s+(\d+)\s*:\s*(.+)$/gm;
-const todoStartRegex = /\/\/\s*TODO\(step\s+(\d+)\s+start\)\s*\n/g;
-const todoEndRegex = /\/\/\s*TODO\(step\s+(\d+)\s+end\)/g;
+const stepRegex = /^\s*\/\/\s*Step\s+(\d+(?:\.\d+)?)\s*:\s*(.+)$/gm;
+const todoStartRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+start\)\s*\n/g;
+const todoEndRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+end\)/g;
 
 export const parseSteps = (stub: string): Step[] => {
   const steps: Step[] = [];
@@ -58,9 +58,11 @@ export const computeStepCompletion = (
   currentCode: string,
   originalStub: string
 ): Record<number, StepStatus> => {
+  const steps = parseSteps(originalStub);
   const originalRegions = parseTodoRegions(originalStub);
   const currentRegions = parseTodoRegions(currentCode);
   const completion: Record<number, StepStatus> = {};
+  const regionSteps = new Set(originalRegions.map((region) => region.stepIndex));
 
   for (const region of originalRegions) {
     const current = currentRegions.find((item) => item.stepIndex === region.stepIndex);
@@ -81,11 +83,35 @@ export const computeStepCompletion = (
     }
   }
 
+  steps.forEach((step) => {
+    if (completion[step.index]) {
+      return;
+    }
+    const children = steps.filter(
+      (item) => Math.floor(item.index) === step.index && item.index !== step.index
+    );
+    if (children.length === 0) {
+      completion[step.index] = 'not_started';
+      return;
+    }
+    const childStatuses = children.map((child) => completion[child.index] ?? 'not_started');
+    const allCompleted = childStatuses.every((status) => status === 'completed');
+    const anyStarted = childStatuses.some((status) => status !== 'not_started');
+    completion[step.index] = allCompleted ? 'completed' : anyStarted ? 'in_progress' : 'not_started';
+  });
+
   return completion;
 };
 
-export const getFirstIncompleteStep = (completion: Record<number, StepStatus>, steps: Step[]) => {
+export const getFirstIncompleteStep = (
+  completion: Record<number, StepStatus>,
+  steps: Step[],
+  regionSteps?: Set<number>
+) => {
   for (const step of steps) {
+    if (regionSteps && !regionSteps.has(step.index)) {
+      continue;
+    }
     if (completion[step.index] !== 'completed') {
       return step.index;
     }
