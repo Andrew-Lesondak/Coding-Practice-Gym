@@ -28,4 +28,10 @@ describe('system design stub parsing', () => {
     const status = computeDesignStepStatus(stub, stub);
     expect(status[1]).toBe('not_started');
   });
+
+  it('does not complete with a single character', () => {
+    const edited = stub.replace('- TODO', '- x');
+    const status = computeDesignStepStatus(edited, stub);
+    expect(status[1]).toBe('in_progress');
+  });
 });

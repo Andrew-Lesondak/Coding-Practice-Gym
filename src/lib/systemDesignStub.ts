@@ -46,6 +46,14 @@ const regionHasDesignContent = (region: string) => {
     return true;
   });
   if (meaningful.length === 0) return false;
+
+  const combined = meaningful
+    .map((line) => line.trim().replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, ''))
+    .join(' ');
+  const hasWordToken = /[A-Za-z0-9]{2,}/.test(combined);
+  if (!hasWordToken) {
+    return false;
+  }
   return regionHasCode(meaningful.join('\n'));
 };
 
