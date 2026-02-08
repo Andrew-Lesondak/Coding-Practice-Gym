@@ -19,6 +19,7 @@ import { updateSchedule } from '../lib/spacedRepetition';
 import { useAppStore, getProblemProgress } from '../store/useAppStore';
 import { toJavaScriptStub } from '../lib/codeTransform';
 import { stableStringify } from '../lib/runnerUtils';
+import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
 import { evaluateStepChecks } from '../lib/stepChecks';
 import { StepStatus } from '../types/progress';
 
@@ -247,42 +248,51 @@ const ProblemDetail = () => {
     if (savedTab && tabs.some((tab) => tab.id === savedTab)) {
       setActiveTab(savedTab);
     }
+    let active = true;
     const storageKey = `dsa-gym-code-${problem.id}-${settings.languageMode}`;
-    const saved = localStorage.getItem(storageKey);
     const stubWithHints = getStubForMode(
       problem.guidedStub,
       settings.languageMode,
       settings.hintLevel,
       stepHints
     );
-    const isEdited = saved !== null && lastStubRef.current && saved !== lastStubRef.current;
-    const shouldReplaceSaved =
-      saved !== null &&
-      lastStubRef.current &&
-      saved === lastStubRef.current &&
-      saved !== stubWithHints;
 
-    const baseCode = shouldReplaceSaved ? stubWithHints : saved ?? stubWithHints;
-    const editedWithHints = isEdited && saved ? updateHintsInCode(saved, stepHints) : baseCode;
-    const nextCode = isEdited && saved
-      ? applyHintLevelToStub(editedWithHints, settings.hintLevel)
-      : baseCode;
+    getDraft(storageKey).then((savedDraft) => {
+      if (!active) return;
+      const saved = savedDraft?.value ?? null;
+      const isEdited = saved !== null && lastStubRef.current && saved !== lastStubRef.current;
+      const shouldReplaceSaved =
+        saved !== null &&
+        lastStubRef.current &&
+        saved === lastStubRef.current &&
+        saved !== stubWithHints;
 
-    setCode(nextCode);
-    prevCodeRef.current = nextCode;
-    if (shouldReplaceSaved || saved === null) {
-      localStorage.setItem(storageKey, nextCode);
-    }
-    lastStubRef.current = stubWithHints;
-    if (problemProgress?.explanation) {
-      setPatternText(problemProgress.explanation.pattern);
-      setWhyText(problemProgress.explanation.why);
-      setComplexityText(problemProgress.explanation.complexity);
-    } else {
-      setPatternText('');
-      setWhyText('');
-      setComplexityText('');
-    }
+      const baseCode = shouldReplaceSaved ? stubWithHints : saved ?? stubWithHints;
+      const editedWithHints = isEdited && saved ? updateHintsInCode(saved, stepHints) : baseCode;
+      const nextCode = isEdited && saved
+        ? applyHintLevelToStub(editedWithHints, settings.hintLevel)
+        : baseCode;
+
+      setCode(nextCode);
+      prevCodeRef.current = nextCode;
+      if (shouldReplaceSaved || saved === null) {
+        void setDraft(storageKey, nextCode);
+      }
+      lastStubRef.current = stubWithHints;
+      if (problemProgress?.explanation) {
+        setPatternText(problemProgress.explanation.pattern);
+        setWhyText(problemProgress.explanation.why);
+        setComplexityText(problemProgress.explanation.complexity);
+      } else {
+        setPatternText('');
+        setWhyText('');
+        setComplexityText('');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
   }, [problem, settings.hintLevel, settings.languageMode, problemProgress?.explanation, stepHints]);
 
   const handleTabChange = (tabId: string) => {
@@ -327,7 +337,7 @@ const ProblemDetail = () => {
     }
     setCode(next);
     prevCodeRef.current = next;
-    localStorage.setItem(`dsa-gym-code-${problem.id}-${settings.languageMode}`, next);
+    void setDraft(`dsa-gym-code-${problem.id}-${settings.languageMode}`, next);
   };
 
   const runTests = async (submit: boolean) => {
@@ -400,7 +410,7 @@ const ProblemDetail = () => {
     );
     setCode(resetCode);
     prevCodeRef.current = resetCode;
-    localStorage.setItem(`dsa-gym-code-${problem.id}-${settings.languageMode}`, resetCode);
+    void setDraft(`dsa-gym-code-${problem.id}-${settings.languageMode}`, resetCode);
     setRunResult(undefined);
   };
 

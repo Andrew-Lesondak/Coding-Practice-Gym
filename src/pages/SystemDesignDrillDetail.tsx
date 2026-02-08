@@ -10,6 +10,7 @@ import { computeRubricScore, getRubricSuggestions } from '../lib/systemDesignRub
 import { getRubricSubset } from '../lib/systemDesignDrillRubric';
 import { useAppStore, getSystemDesignDrillProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
+import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
 
 const SystemDesignDrillDetail = () => {
   const { id } = useParams();
@@ -38,9 +39,17 @@ const SystemDesignDrillDetail = () => {
 
   useEffect(() => {
     if (!drill) return;
-    const saved = localStorage.getItem(`dsa-gym-drill-${drill.id}`);
-    setContent(saved ?? drill.starterTemplateMarkdown);
+    let active = true;
+    const draftKey = `dsa-gym-drill-${drill.id}`;
+    setContent(drill.starterTemplateMarkdown);
+    getDraft(draftKey).then((draft) => {
+      if (!active) return;
+      setContent(draft?.value ?? drill.starterTemplateMarkdown);
+    });
     setRemaining(drill.timeLimitMinutes * 60);
+    return () => {
+      active = false;
+    };
   }, [drill]);
 
   useEffect(() => {
@@ -125,7 +134,7 @@ const SystemDesignDrillDetail = () => {
     if (!textareaRef.current) return;
     const inserted = insertIntoTemplateRegion(content, stepIndex, '');
     setContent(inserted);
-    localStorage.setItem(`dsa-gym-drill-${drill.id}`, inserted);
+    void setDraft(`dsa-gym-drill-${drill.id}`, inserted);
     textareaRef.current.focus();
   };
 
@@ -222,7 +231,7 @@ const SystemDesignDrillDetail = () => {
                 if (ended) return;
                 const next = event.target.value;
                 setContent(next);
-                localStorage.setItem(`dsa-gym-drill-${drill.id}`, next);
+                void setDraft(`dsa-gym-drill-${drill.id}`, next);
               }}
               readOnly={ended}
             />

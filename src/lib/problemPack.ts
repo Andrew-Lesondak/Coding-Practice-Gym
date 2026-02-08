@@ -4,9 +4,6 @@ import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 
-const OVERLAY_KEY = 'dsa-gym-overlay-pack';
-const OVERLAY_ENABLED_KEY = 'dsa-gym-overlay-enabled';
-
 export type OverlayPack = ProblemPack & {
   systemDesignPrompts?: SystemDesignPrompt[];
   systemDesignDrills?: SystemDesignDrill[];
@@ -14,38 +11,17 @@ export type OverlayPack = ProblemPack & {
   reactCodingProblems?: ReactCodingProblem[];
 };
 
-export const loadOverlayPack = (): OverlayPack | null => {
-  const raw = localStorage.getItem(OVERLAY_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as OverlayPack;
-    if (!parsed) return null;
-    if (!Array.isArray(parsed.problems)) {
-      parsed.problems = [];
-    }
-    if (!Array.isArray(parsed.reactCodingProblems)) {
-      parsed.reactCodingProblems = [];
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-};
-
-export const saveOverlayPack = (pack: OverlayPack) => {
-  localStorage.setItem(OVERLAY_KEY, JSON.stringify(pack));
-};
-
-export const clearOverlayPack = () => {
-  localStorage.removeItem(OVERLAY_KEY);
-};
-
-export const getOverlayEnabled = () => {
-  return localStorage.getItem(OVERLAY_ENABLED_KEY) === 'true';
-};
-
-export const setOverlayEnabled = (enabled: boolean) => {
-  localStorage.setItem(OVERLAY_ENABLED_KEY, String(enabled));
+export const normalizeOverlayPack = (pack: OverlayPack | null): OverlayPack | null => {
+  if (!pack) return null;
+  const normalized: OverlayPack = {
+    ...pack,
+    problems: Array.isArray(pack.problems) ? pack.problems : [],
+    systemDesignPrompts: Array.isArray(pack.systemDesignPrompts) ? pack.systemDesignPrompts : [],
+    systemDesignDrills: Array.isArray(pack.systemDesignDrills) ? pack.systemDesignDrills : [],
+    quizQuestions: Array.isArray(pack.quizQuestions) ? pack.quizQuestions : [],
+    reactCodingProblems: Array.isArray(pack.reactCodingProblems) ? pack.reactCodingProblems : []
+  };
+  return normalized;
 };
 
 export const mergePacks = (base: Problem[], overlay?: Problem[]): Problem[] => {

@@ -10,6 +10,7 @@ import { computeStepCompletion, getFirstIncompleteStep, parseSteps, parseTodoReg
 import { runReactTests, ReactRunResult } from '../lib/reactRunner';
 import { useAppStore, getReactCodingProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
+import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
 import { StepStatus } from '../types/progress';
 
 const tabs = [
@@ -62,11 +63,18 @@ const ReactCodingDetail = () => {
 
   useEffect(() => {
     if (!problem) return;
+    let active = true;
     const storageKey = `react-gym-code-${problem.id}`;
-    const saved = localStorage.getItem(storageKey);
-    const nextCode = saved ?? problem.guidedStubTsx;
-    setCode(nextCode);
-    prevCodeRef.current = nextCode;
+    getDraft(storageKey).then((savedDraft) => {
+      if (!active) return;
+      const saved = savedDraft?.value ?? null;
+      const nextCode = saved ?? problem.guidedStubTsx;
+      setCode(nextCode);
+      prevCodeRef.current = nextCode;
+      if (!saved) {
+        void setDraft(storageKey, nextCode);
+      }
+    });
     if (problemProgress?.explanation) {
       setConceptText(problemProgress.explanation.concept);
       setEdgeText(problemProgress.explanation.edgeCase);
@@ -76,6 +84,9 @@ const ReactCodingDetail = () => {
       setEdgeText('');
       setReviewText('');
     }
+    return () => {
+      active = false;
+    };
   }, [problem, problemProgress?.explanation]);
 
   useEffect(() => {
@@ -146,7 +157,7 @@ const ReactCodingDetail = () => {
   const onCodeChange = (next: string) => {
     setCode(next);
     prevCodeRef.current = next;
-    localStorage.setItem(`react-gym-code-${problem.id}`, next);
+    void setDraft(`react-gym-code-${problem.id}`, next);
   };
 
   return (
@@ -162,7 +173,7 @@ const ReactCodingDetail = () => {
             const next = problem.guidedStubTsx;
             setCode(next);
             prevCodeRef.current = next;
-            localStorage.setItem(`react-gym-code-${problem.id}`, next);
+            void setDraft(`react-gym-code-${problem.id}`, next);
           }}
         >
           Reset

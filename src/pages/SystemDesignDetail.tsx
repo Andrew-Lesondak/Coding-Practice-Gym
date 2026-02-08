@@ -21,6 +21,7 @@ import { isDecisionMentioned } from '../lib/referenceCoverage';
 import { useAppStore, getSystemDesignProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
 import { SystemDesignProgress } from '../types/progress';
+import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
 
 const tabs = [
   { id: 'prompt', label: 'Prompt' },
@@ -63,10 +64,19 @@ const SystemDesignDetail = () => {
 
   useEffect(() => {
     if (!prompt) return;
-    const saved = localStorage.getItem(`dsa-gym-sd-${prompt.id}`);
-    setContent(saved ?? prompt.guidedDesignStubMarkdown);
-    const savedMermaid = localStorage.getItem(`dsa-gym-sd-mermaid-${prompt.id}`);
-    setMermaidText(savedMermaid ?? '');
+    let active = true;
+    const draftKey = `dsa-gym-sd-${prompt.id}`;
+    const mermaidKey = `dsa-gym-sd-mermaid-${prompt.id}`;
+    setContent(prompt.guidedDesignStubMarkdown);
+    setMermaidText('');
+    getDraft(draftKey).then((draft) => {
+      if (!active) return;
+      setContent(draft?.value ?? prompt.guidedDesignStubMarkdown);
+    });
+    getDraft(mermaidKey).then((draft) => {
+      if (!active) return;
+      setMermaidText(draft?.value ?? '');
+    });
     if (promptProgress?.explanation) {
       setTradeoff(promptProgress.explanation.tradeoff);
       setRisk(promptProgress.explanation.risk);
@@ -76,6 +86,9 @@ const SystemDesignDetail = () => {
       setRisk('');
       setScaleChange('');
     }
+    return () => {
+      active = false;
+    };
   }, [prompt, promptProgress?.explanation]);
 
   useEffect(() => {
@@ -164,15 +177,17 @@ const SystemDesignDetail = () => {
 
   const handleAddDecision = (decisionText: string) => {
     const step = getSuggestedStepForDecision(decisionText);
-    const inserted = insertIntoTemplateRegion(content, step, `Decision: ${decisionText}. Tradeoff: __.`);
+    const base = content || prompt.guidedDesignStubMarkdown;
+    const inserted = insertIntoTemplateRegion(base, step, `Decision: ${decisionText}. Tradeoff: __.`);
     setContent(inserted);
-    localStorage.setItem(`dsa-gym-sd-${prompt.id}`, inserted);
+    void setDraft(`dsa-gym-sd-${prompt.id}`, inserted);
   };
 
   const handleInsertStarter = (text: string, step: number) => {
-    const inserted = insertIntoTemplateRegion(content, step, text);
+    const base = content || prompt.guidedDesignStubMarkdown;
+    const inserted = insertIntoTemplateRegion(base, step, text);
     setContent(inserted);
-    localStorage.setItem(`dsa-gym-sd-${prompt.id}`, inserted);
+    void setDraft(`dsa-gym-sd-${prompt.id}`, inserted);
   };
 
   return (
@@ -277,7 +292,7 @@ const SystemDesignDetail = () => {
               onChange={(event) => {
                 const next = event.target.value;
                 setContent(next);
-                localStorage.setItem(`dsa-gym-sd-${prompt.id}`, next);
+                void setDraft(`dsa-gym-sd-${prompt.id}`, next);
               }}
             />
             <div className="flex gap-2">
@@ -292,9 +307,12 @@ const SystemDesignDetail = () => {
               value={mermaidText}
               onChange={(value) => {
                 setMermaidText(value);
-                localStorage.setItem(`dsa-gym-sd-mermaid-${prompt.id}`, value);
+                void setDraft(`dsa-gym-sd-mermaid-${prompt.id}`, value);
               }}
-              onInsertSkeleton={() => setMermaidText(mermaidSkeleton)}
+              onInsertSkeleton={() => {
+                setMermaidText(mermaidSkeleton);
+                void setDraft(`dsa-gym-sd-mermaid-${prompt.id}`, mermaidSkeleton);
+              }}
             />
           </div>
           <div className="space-y-4">

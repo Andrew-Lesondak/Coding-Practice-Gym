@@ -5,7 +5,7 @@ import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { useAppStore } from '../store/useAppStore';
-import { loadOverlayPack, saveOverlayPack, OverlayPack } from '../lib/problemPack';
+import { OverlayPack, normalizeOverlayPack } from '../lib/problemPack';
 import {
   validateDesignStepMarkers,
   validateGuidedStubCompile,
@@ -120,7 +120,8 @@ const Author = () => {
   const [jsonBlob, setJsonBlob] = useState('');
   const overlayEnabled = useAppStore((state) => state.settings.overlayEnabled);
   const toggleOverlay = useAppStore((state) => state.toggleOverlay);
-  const bumpOverlayVersion = useAppStore((state) => state.bumpOverlayVersion);
+  const overlayPack = useAppStore((state) => state.overlayPack);
+  const setOverlayPack = useAppStore((state) => state.setOverlayPack);
 
   const syncMessages = useMemo(() => {
     const msgs: ValidationMessage[] = [];
@@ -275,7 +276,7 @@ const Author = () => {
   const saveOverlay = () => {
     if (!import.meta.env.DEV) return;
     if (hasBlockingErrors) return;
-    const existing = loadOverlayPack();
+    const existing = normalizeOverlayPack(overlayPack);
     const mergedProblems = existing?.problems ?? [];
     const mergedDesign = existing?.systemDesignPrompts ?? [];
     const mergedDrills = existing?.systemDesignDrills ?? [];
@@ -311,8 +312,7 @@ const Author = () => {
       updatedAt: new Date().toISOString(),
       version: 1
     };
-    saveOverlayPack(pack);
-    bumpOverlayVersion();
+    setOverlayPack(pack);
   };
 
   return (

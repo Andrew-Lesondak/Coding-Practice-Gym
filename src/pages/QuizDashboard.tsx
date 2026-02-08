@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useQuizQuestions } from '../lib/useQuizQuestions';
 import { useAppStore } from '../store/useAppStore';
 import { selectQuizQuestions } from '../lib/quizEngine';
-import { saveQuizSession, loadQuizSessions } from '../lib/quizStorage';
+import { saveQuizSession } from '../lib/quizStorage';
 import { QuizQuestion } from '../types/quiz';
 
 const QuizDashboard = () => {
   const navigate = useNavigate();
   const questions = useQuizQuestions();
   const progress = useAppStore((state) => state.progress.quizzes);
+  const quizSessions = useAppStore((state) => state.quizSessions);
   const [count, setCount] = useState(10);
   const [topics, setTopics] = useState<QuizQuestion['topic'][]>(['javascript', 'react']);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('mixed');
@@ -44,7 +45,7 @@ const QuizDashboard = () => {
       .slice(0, 5);
   }, [questions, progress]);
 
-  const recentSessions = useMemo(() => loadQuizSessions().slice(0, 5), []);
+  const recentSessions = useMemo(() => quizSessions.slice(0, 5), [quizSessions]);
 
   const startSession = () => {
     const selected = selectQuizQuestions(questions, progress, {

@@ -2,15 +2,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSystemDesignPrompts } from '../lib/useSystemDesignPrompts';
 import { useSystemDesignDrills } from '../lib/useSystemDesignDrills';
 import { createMockSession } from '../lib/mockInterview';
-import { saveMockSession, loadMockSessions } from '../lib/mockInterviewStorage';
+import { saveMockSession } from '../lib/mockInterviewStorage';
 import { useState } from 'react';
+import { useAppStore } from '../store/useAppStore';
 
 const SystemDesignMockDashboard = () => {
   const prompts = useSystemDesignPrompts();
   const drills = useSystemDesignDrills();
   const [promptId, setPromptId] = useState(prompts[0]?.id ?? '');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
-  const sessions = loadMockSessions();
+  const sessions = useAppStore((state) => state.mockSessions);
   const last = sessions.sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0];
   const navigate = useNavigate();
 

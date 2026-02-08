@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { systemDesignDrills as baseDrills } from '../data/systemDesignDrills';
-import { loadOverlayPack } from './problemPack';
+import { normalizeOverlayPack } from './problemPack';
 import { useAppStore } from '../store/useAppStore';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
 
@@ -14,11 +14,11 @@ const mergeDrills = (base: SystemDesignDrill[], overlay?: SystemDesignDrill[]) =
 
 export const useSystemDesignDrills = () => {
   const overlayEnabled = useAppStore((state) => state.settings.overlayEnabled);
-  const overlayVersion = useAppStore((state) => state.overlayVersion);
+  const overlayPack = useAppStore((state) => state.overlayPack);
 
   return useMemo(() => {
     if (!overlayEnabled) return baseDrills;
-    const overlay = loadOverlayPack();
+    const overlay = normalizeOverlayPack(overlayPack);
     return mergeDrills(baseDrills, overlay?.systemDesignDrills);
-  }, [overlayEnabled, overlayVersion]);
+  }, [overlayEnabled, overlayPack]);
 };

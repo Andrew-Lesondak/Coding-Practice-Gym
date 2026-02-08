@@ -27,10 +27,16 @@ import ReactCodingCatalog from '../pages/ReactCodingCatalog';
 import ReactCodingDetail from '../pages/ReactCodingDetail';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
+import { initializeStorage, loadAllState, loadLegacyState } from '../storage';
+import { useAppStore } from '../store/useAppStore';
+import { normalizeOverlayPack } from '../lib/problemPack';
 
 const App = () => {
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const problems = useProblems();
+  const hydrate = useAppStore((state) => state.hydrateFromStorage);
+  const storageStatus = useAppStore((state) => state.storageStatus);
+  const setStorageStatus = useAppStore((state) => state.setStorageStatus);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -43,8 +49,63 @@ const App = () => {
     };
   }, [problems]);
 
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setStorageStatus('migrating');
+      const status = await initializeStorage();
+      if (!active) return;
+      if (status === 'ready') {
+        const state = await loadAllState();
+        if (!active) return;
+        hydrate({
+          progress: state.progress ?? null,
+          settings: state.settings ?? null,
+          overlayPack: normalizeOverlayPack(state.overlayPack),
+          drillAttempts: state.drillAttempts ?? [],
+          mockSessions: state.mockSessions ?? [],
+          quizSessions: state.quizSessions ?? [],
+          adaptivePlans: state.adaptivePlans ?? [],
+          adaptiveRuns: state.adaptiveRuns ?? []
+        });
+        setStorageStatus('ready');
+        return;
+      }
+      if (status === 'unavailable') {
+        const legacy = loadLegacyState();
+        hydrate({
+          progress: legacy.progress,
+          settings: legacy.settings,
+          overlayPack: normalizeOverlayPack(legacy.overlayPack),
+          drillAttempts: legacy.drillAttempts ?? [],
+          mockSessions: legacy.mockSessions ?? [],
+          quizSessions: legacy.quizSessions ?? [],
+          adaptivePlans: legacy.adaptivePlans ?? [],
+          adaptiveRuns: legacy.adaptiveRuns ?? []
+        });
+        setStorageStatus('unavailable');
+        return;
+      }
+      setStorageStatus('error', 'Storage initialization failed.');
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [hydrate, setStorageStatus]);
+
   return (
     <Layout>
+      {storageStatus === 'unavailable' && (
+        <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+          IndexedDB is unavailable. The app is running in read-only fallback mode using legacy data.
+        </div>
+      )}
+      {storageStatus === 'error' && (
+        <div className="mb-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+          Storage initialization failed. Data may not persist correctly.
+        </div>
+      )}
       {validationIssues.length > 0 && (
         <div className="mb-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-4 text-sm text-rose-200">
           <p className="font-semibold">Problem pack validation failed.</p>

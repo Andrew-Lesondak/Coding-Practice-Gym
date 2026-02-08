@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { dsaDrills } from '../data/dsaDrills';
-import { loadDrillAttempts, getDrillStats } from '../lib/dsaDrillStorage';
 import { problems } from '../data/problems';
+import { useAppStore } from '../store/useAppStore';
 
 const DSADrillsDashboard = () => {
-  const attempts = loadDrillAttempts();
+  const attempts = useAppStore((state) => state.drillAttempts);
   const patternScores: Record<string, number[]> = {};
   attempts.forEach((attempt) => {
     const problem = problems.find((p) => p.id === attempt.problemId);
@@ -26,7 +26,7 @@ const DSADrillsDashboard = () => {
     .map(([type, durations]) => ({ type, avg: durations.reduce((a, b) => a + b, 0) / durations.length }))
     .sort((a, b) => b.avg - a.avg)
     .slice(0, 3);
-  const redo = dsaDrills.find((drill) => getDrillStats(drill.id).attempts > 0) ?? dsaDrills[0];
+  const redo = dsaDrills.find((drill) => attempts.some((attempt) => attempt.drillId === drill.id)) ?? dsaDrills[0];
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,5 @@
 import { DSASpeedDrill } from '../types/dsaDrill';
+import { useAppStore } from '../store/useAppStore';
 
 export type DrillAttempt = {
   drillId: string;
@@ -11,23 +12,12 @@ export type DrillAttempt = {
   confidence: number;
 };
 
-const KEY = 'dsa-speed-drill-attempts';
-
 export const loadDrillAttempts = (): DrillAttempt[] => {
-  const raw = localStorage.getItem(KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as DrillAttempt[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return useAppStore.getState().drillAttempts;
 };
 
 export const saveDrillAttempt = (attempt: DrillAttempt) => {
-  const all = loadDrillAttempts();
-  all.push(attempt);
-  localStorage.setItem(KEY, JSON.stringify(all));
+  useAppStore.getState().addDrillAttempt(attempt);
 };
 
 export const getDrillStats = (drillId: string) => {

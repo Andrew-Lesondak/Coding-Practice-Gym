@@ -112,6 +112,33 @@ Run tests:
 npm run test
 ```
 
+## Storage & migrations
+
+The app uses IndexedDB as the source of truth for all persistence. Storage is centralized under `src/storage/`:
+
+- `src/storage/db.ts`: database open + schema versioning
+- `src/storage/stores/*`: typed store accessors
+- `src/storage/migrations/*`: migrations from legacy localStorage
+
+### Migration behavior
+
+On first load after this upgrade:
+
+1. The app checks if IndexedDB is empty and legacy localStorage data exists.
+2. If so, it migrates progress, settings, sessions, and drafts into IndexedDB.
+3. localStorage is **not** deleted (kept as backup).
+
+If IndexedDB is unavailable, the app shows a warning banner and falls back to a read-only legacy view.
+
+### Reset storage (dev only)
+
+To wipe IndexedDB during development:
+
+- Open browser devtools and run: `indexedDB.deleteDatabase('dsa-gym-db')`
+- Reload the page
+
+Legacy localStorage is left intact and can be re-migrated.
+
 ## Problem structure
 
 Problems live in `src/data/problems.ts` and follow this shape:
@@ -195,7 +222,7 @@ Visit `/author` in dev mode to draft a new problem in the browser. The authoring
 
 - Live validation for step markers, tests, and reference solution.
 - Import/export JSON and copy-to-clipboard.
-- Save to a local overlay pack stored in `localStorage` (dev only).
+- Save to a local overlay pack stored in IndexedDB (dev only).
 
 Switch the authoring mode to “System Design” to draft a system design prompt and rubric. Validation checks step markers and rubric weights before saving.
 Switch to “Quizzes” to draft quiz questions and validate choices/correct answers.

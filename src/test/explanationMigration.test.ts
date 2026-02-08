@@ -1,18 +1,28 @@
-import { migrateStore } from '../store/useAppStore';
+import { extractLegacyState } from '../storage/migrations/v1_from_localStorage';
 
-describe('store migration', () => {
-  it('adds explanationHistory when missing', () => {
-    const legacyState = {
-      progress: { problems: { demo: { attempts: 0, passes: 0, stepCompletion: {}, reviewIntervalDays: 2, easeFactor: 2.3 } } },
-      settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true },
-      overlayVersion: 0
-    };
+describe('legacy extraction', () => {
+  it('pulls progress/settings from localStorage safely', () => {
+    localStorage.setItem(
+      'dsa-gym-store',
+      JSON.stringify({
+        state: {
+          progress: {
+            problems: {
+              demo: { attempts: 1, passes: 0, stepCompletion: {}, reviewIntervalDays: 2, easeFactor: 2.3 }
+            },
+            systemDesign: {},
+            systemDesignDrills: {},
+            quizzes: {},
+            reactCoding: {}
+          },
+          settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false }
+        }
+      })
+    );
+    localStorage.setItem('dsa-gym-overlay-enabled', 'true');
 
-    const migrated = migrateStore(legacyState, 1) as any;
-    expect(migrated.progress.problems.demo.explanationHistory).toBeDefined();
-    expect(Array.isArray(migrated.progress.problems.demo.explanationHistory)).toBe(true);
-    expect(migrated.progress.systemDesign).toBeDefined();
-    expect(migrated.progress.systemDesignDrills).toBeDefined();
-    expect(migrated.progress.reactCoding).toBeDefined();
+    const legacy = extractLegacyState();
+    expect(legacy.progress?.problems.demo).toBeDefined();
+    expect(legacy.settings?.overlayEnabled).toBe(true);
   });
 });
