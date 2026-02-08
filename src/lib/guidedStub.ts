@@ -2,8 +2,7 @@ import { Step, TodoRegion } from '../types/problem';
 import { StepStatus } from '../types/progress';
 
 const stepRegex = /^\s*\/\/\s*Step\s+(\d+(?:\.\d+)?)\s*:\s*(.+)$/gm;
-const todoStartRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+start\)[ \t]*\r?\n/g;
-const todoEndRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+end\)/g;
+const todoMarkerRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+(start|end)\)/g;
 
 export const parseSteps = (stub: string): Step[] => {
   const steps: Step[] = [];
@@ -21,23 +20,31 @@ export const parseSteps = (stub: string): Step[] => {
 
 export const parseTodoRegions = (code: string): TodoRegion[] => {
   const regions: TodoRegion[] = [];
-  let startMatch: RegExpExecArray | null;
-  todoStartRegex.lastIndex = 0;
-  while ((startMatch = todoStartRegex.exec(code))) {
-    const stepIndex = Number(startMatch[1]);
-    todoEndRegex.lastIndex = todoStartRegex.lastIndex;
-    const endMatch = todoEndRegex.exec(code);
-    if (!endMatch || Number(endMatch[1]) !== stepIndex) {
-      continue;
+  const open: Record<number, number> = {};
+  let match: RegExpExecArray | null;
+  todoMarkerRegex.lastIndex = 0;
+  while ((match = todoMarkerRegex.exec(code))) {
+    const stepIndex = Number(match[1]);
+    const kind = match[2];
+    if (kind === 'start') {
+      let start = match.index + match[0].length;
+      if (code[start] === '\r' && code[start + 1] === '\n') {
+        start += 2;
+      } else if (code[start] === '\n') {
+        start += 1;
+      }
+      open[stepIndex] = start;
+    } else if (open[stepIndex] !== undefined) {
+      const start = open[stepIndex];
+      const end = match.index;
+      regions.push({
+        stepIndex,
+        start,
+        end,
+        originalContent: code.slice(start, end)
+      });
+      delete open[stepIndex];
     }
-    const start = startMatch.index + startMatch[0].length;
-    const end = endMatch.index;
-    regions.push({
-      stepIndex,
-      start,
-      end,
-      originalContent: code.slice(start, end)
-    });
   }
   return regions;
 };

@@ -165,7 +165,6 @@ const ProblemDetail = () => {
       });
       setShowRating(true);
       setShowExplainModal(true);
-      setActiveTab('review');
     }
   };
 
