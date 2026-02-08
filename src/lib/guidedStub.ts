@@ -6,15 +6,35 @@ const todoMarkerRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+(start|end)\)/g;
 
 export const parseSteps = (stub: string): Step[] => {
   const steps: Step[] = [];
+  const headerTitles = new Map<number, string>();
   let match: RegExpExecArray | null;
   stepRegex.lastIndex = 0;
   while ((match = stepRegex.exec(stub))) {
+    const index = Number(match[1]);
+    const title = match[2].trim();
     steps.push({
-      index: Number(match[1]),
-      title: match[2].trim(),
-      description: match[2].trim()
+      index,
+      title,
+      description: title
     });
+    headerTitles.set(index, title);
   }
+
+  const regionIndices = parseTodoRegions(stub).map((region) => region.stepIndex);
+  const existing = new Set(steps.map((step) => step.index));
+  regionIndices.forEach((index) => {
+    if (existing.has(index)) return;
+    const isDecimal = Math.floor(index) !== index;
+    const title = isDecimal
+      ? `Sub-step ${index}`
+      : headerTitles.get(index) ?? `Step ${index}`;
+    steps.push({
+      index,
+      title,
+      description: title
+    });
+  });
+
   return steps.sort((a, b) => a.index - b.index);
 };
 
@@ -94,35 +114,29 @@ export const computeStepCompletion = (
     }
   }
 
-  steps.forEach((step) => {
-    if (completion[step.index]) {
-      const children = steps.filter(
-        (item) => Math.floor(item.index) === step.index && item.index !== step.index
-      );
-      if (children.length === 0) {
-        return;
-      }
-      const childStatuses = children.map((child) => completion[child.index] ?? 'not_started');
-      const allCompleted = childStatuses.every((status) => status === 'completed');
-      const anyStarted = childStatuses.some((status) => status !== 'not_started');
-      if (completion[step.index] === 'not_started' && anyStarted) {
-        completion[step.index] = 'in_progress';
-      } else if (completion[step.index] !== 'completed' && allCompleted) {
-        completion[step.index] = 'completed';
-      }
-      return;
-    }
-    const children = steps.filter(
-      (item) => Math.floor(item.index) === step.index && item.index !== step.index
+  const allIndices = Array.from(
+    new Set([...steps.map((step) => step.index), ...Object.keys(completion).map(Number)])
+  ).sort((a, b) => a - b);
+
+  allIndices.forEach((index) => {
+    const children = allIndices.filter(
+      (item) => Math.floor(item) === index && item !== index
     );
     if (children.length === 0) {
-      completion[step.index] = 'not_started';
+      completion[index] = completion[index] ?? 'not_started';
       return;
     }
-    const childStatuses = children.map((child) => completion[child.index] ?? 'not_started');
+    const childStatuses = children.map((child) => completion[child] ?? 'not_started');
     const allCompleted = childStatuses.every((status) => status === 'completed');
     const anyStarted = childStatuses.some((status) => status !== 'not_started');
-    completion[step.index] = allCompleted ? 'completed' : anyStarted ? 'in_progress' : 'not_started';
+    const baseStatus = completion[index] ?? 'not_started';
+    if (allCompleted) {
+      completion[index] = 'completed';
+    } else if (anyStarted || baseStatus !== 'not_started') {
+      completion[index] = 'in_progress';
+    } else {
+      completion[index] = 'not_started';
+    }
   });
 
   return completion;

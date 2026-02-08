@@ -6,12 +6,18 @@ const StepList = ({
   steps,
   completion,
   activeStep,
-  onSelect
+  onSelect,
+  showDescription = true,
+  hintLevel = 1,
+  hints
 }: {
   steps: Step[];
   completion: Record<number, StepStatus>;
   activeStep: number;
   onSelect?: (stepIndex: number) => void;
+  showDescription?: boolean;
+  hintLevel?: number;
+  hints?: Record<number, { level1: string; level2: string; level3: string }>;
 }) => {
   return (
     <div className="space-y-3">
@@ -44,7 +50,16 @@ const StepList = ({
                 {status === 'completed' ? 'Completed' : status === 'in_progress' ? 'In progress' : 'Not started'}
               </span>
             </div>
-            <p className="text-xs text-mist-200">{step.title}</p>
+            {showDescription && <p className="text-xs text-mist-200">{step.title}</p>}
+            {hintLevel >= 1 && hints?.[step.index] && (
+              <p className="mt-2 text-xs text-mist-300">
+                {hintLevel >= 3
+                  ? hints[step.index].level3
+                  : hintLevel >= 2
+                  ? hints[step.index].level2
+                  : hints[step.index].level1}
+              </p>
+            )}
           </button>
         );
       })}

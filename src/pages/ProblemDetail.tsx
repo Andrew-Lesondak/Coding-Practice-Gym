@@ -6,6 +6,7 @@ import StepList from '../components/StepList';
 import CodeEditor from '../components/CodeEditor';
 import TestResults from '../components/TestResults';
 import { useProblems } from '../lib/useProblems';
+import { Problem } from '../types/problem';
 import {
   computeStepCompletion,
   findLockedRegion,
@@ -30,19 +31,169 @@ const tabs = [
 
 const applyHintLevel = (code: string, level: number) => {
   const lines = code.split('\n');
-  return lines
-    .filter((line) => {
-      const match = line.match(/\/\/\s*HINT\(level\s+(\d+)\):/);
-      if (!match) return true;
-      const hintLevel = Number(match[1]);
-      return hintLevel <= level;
+  const filteredHints = lines.filter((line) => {
+    const match = line.match(/\/\/\s*HINT\(level\s+(\d+)\):/);
+    if (!match) return true;
+    const hintLevel = Number(match[1]);
+    if (level >= 2) {
+      return hintLevel === level;
+    }
+    return hintLevel <= level;
+  });
+
+  return filteredHints
+    .map((line) => {
+      if (level === 0) {
+        if (/\/\/\s*HINT\(level\s+\d+\):/.test(line)) {
+          return null;
+        }
+        const match = line.match(/^(\s*\/\/\s*Step\s+\d+(?:\.\d+)?)(\s*:\s*.+)?$/);
+        if (match) {
+          return match[1];
+        }
+      }
+      return line;
     })
+    .filter((line): line is string => line !== null)
     .join('\n');
 };
 
-const getStubForMode = (stub: string, languageMode: 'ts' | 'js', hintLevel: number) => {
-  const withHints = applyHintLevel(stub, hintLevel);
-  return languageMode === 'js' ? toJavaScriptStub(withHints) : withHints;
+const applyHintLevelToStub = (code: string, level: number) => {
+  const lines = code.split('\n');
+  let insideTodo = false;
+  const filtered = lines.filter((line) => {
+    if (/\/\/\s*TODO\(step\s+.*\s+start\)/.test(line)) {
+      insideTodo = true;
+      return true;
+    }
+    if (/\/\/\s*TODO\(step\s+.*\s+end\)/.test(line)) {
+      insideTodo = false;
+      return true;
+    }
+    const hintMatch = line.match(/\/\/\s*HINT\(level\s+(\d+)\):/);
+    if (hintMatch) {
+      const hintLevel = Number(hintMatch[1]);
+      if (level >= 2) {
+        return hintLevel === level;
+      }
+      return hintLevel <= level;
+    }
+    if (insideTodo && level >= 2) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') && !/\/\/\s*Step\s+\d+/.test(trimmed)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  return applyHintLevel(filtered.join('\n'), level);
+};
+
+const formatRegexExample = (pattern: string) => {
+  return pattern
+    .replace(/\\s\*/g, ' ')
+    .replace(/\\s\+/g, ' ')
+    .replace(/\\s\?/g, ' ')
+    .replace(/\\\(/g, '(')
+    .replace(/\\\)/g, ')')
+    .replace(/\\\./g, '.')
+    .replace(/\\\[/g, '[')
+    .replace(/\\\]/g, ']')
+    .replace(/\.\*/g, ' ... ')
+    .replace(/\|/g, ' or ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const buildStepHints = (steps: ReturnType<typeof parseSteps>, stepChecks: Problem['stepChecks'] | undefined) => {
+  if (!stepChecks || stepChecks.length === 0) return {};
+  const hints: Record<number, { level1: string; level2: string; level3: string }> = {};
+  const grouped: Record<number, typeof stepChecks> = {};
+  stepChecks.forEach((check) => {
+    grouped[check.stepIndex] = grouped[check.stepIndex] ?? [];
+    grouped[check.stepIndex].push(check);
+  });
+  Object.entries(grouped).forEach(([key, checks]) => {
+    const stepIndex = Number(key);
+    const [primary, secondary] = checks;
+    const stepTitle = steps.find((step) => step.index === stepIndex)?.title ?? `Step ${stepIndex}`;
+    const level1 = stepTitle;
+    const level2 = primary?.message ?? 'Focus on the next invariant update.';
+    const level3Parts: string[] = [];
+    if (primary?.message) level3Parts.push(primary.message);
+    if (secondary?.message) level3Parts.push(secondary.message);
+    if (primary?.kind === 'regex' && primary.pattern) {
+      level3Parts.push(`Example: ${formatRegexExample(primary.pattern)}`);
+    }
+    const level3 = level3Parts.length > 0 ? level3Parts.join(' · ') : level2;
+    hints[stepIndex] = { level1, level2, level3 };
+  });
+  return hints;
+};
+
+const injectStepHints = (
+  stub: string,
+  stepHints: Record<number, { level1: string; level2: string; level3: string }>
+) => {
+  if (!stepHints || Object.keys(stepHints).length === 0) return stub;
+  if (stub.includes('HINT(level 1):')) return stub;
+  let next = stub;
+  Object.entries(stepHints).forEach(([key, hint]) => {
+    const stepIndex = key.replace('.', '\\.');
+    const regex = new RegExp(`^(\\s*//\\s*TODO\\(step\\s+${stepIndex}\\s+start\\)\\s*)$`, 'm');
+    next = next.replace(regex, (_match, line) => {
+      const indent = line.match(/^(\s*)/)?.[1] ?? '';
+      return (
+        `${line}\n` +
+        `${indent}// HINT(level 1): ${hint.level1}\n` +
+        `${indent}// HINT(level 2): ${hint.level2}\n` +
+        `${indent}// HINT(level 3): ${hint.level3}`
+      );
+    });
+  });
+  return next;
+};
+
+const stripHintLines = (code: string) => {
+  return code
+    .split('\n')
+    .filter((line) => !/\/\/\s*HINT\(level\s+\d+\):/.test(line))
+    .join('\n');
+};
+
+const updateHintsInCode = (
+  code: string,
+  stepHints: Record<number, { level1: string; level2: string; level3: string }>
+) => {
+  const withoutHints = stripHintLines(code);
+  return injectStepHints(withoutHints, stepHints);
+};
+
+const ensureStepSpacing = (code: string) => {
+  const lines = code.split('\n');
+  const result: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const isStepHeader = /^\s*\/\/\s*Step\s+\d+(?:\.\d+)?\b/.test(line);
+    if (isStepHeader && result.length > 0 && result[result.length - 1].trim() !== '') {
+      result.push('');
+    }
+    result.push(line);
+  }
+  return result.join('\n');
+};
+
+const getStubForMode = (
+  stub: string,
+  languageMode: 'ts' | 'js',
+  hintLevel: number,
+  stepHints: Record<number, { level1: string; level2: string; level3: string }>
+) => {
+  const withInjectedHints = injectStepHints(stub, stepHints);
+  const withHints = applyHintLevelToStub(withInjectedHints, hintLevel);
+  const withSpacing = ensureStepSpacing(withHints);
+  return languageMode === 'js' ? toJavaScriptStub(withSpacing) : withSpacing;
 };
 
 const ProblemDetail = () => {
@@ -63,6 +214,10 @@ const ProblemDetail = () => {
   const [difficultyRating, setDifficultyRating] = useState(3);
   const [confidenceRating, setConfidenceRating] = useState(3);
   const prevCodeRef = useRef('');
+  const lastStubRef = useRef('');
+  const [lastRunMode, setLastRunMode] = useState<'run' | 'submit' | null>(null);
+  const [lastSubmitPassed, setLastSubmitPassed] = useState(false);
+  const [lastSubmitProblemId, setLastSubmitProblemId] = useState<string | null>(null);
 
   const progress = useAppStore((state) => state.progress);
   const settings = useAppStore((state) => state.settings);
@@ -72,6 +227,10 @@ const ProblemDetail = () => {
   const saveExplanation = useAppStore((state) => state.saveExplanation);
 
   const steps = useMemo(() => (problem ? parseSteps(problem.guidedStub) : []), [problem]);
+  const stepHints = useMemo(
+    () => (problem ? buildStepHints(steps, problem.stepChecks) : {}),
+    [problem, steps]
+  );
   const regionSteps = useMemo(() => {
     if (!problem) {
       return new Set<number>();
@@ -79,14 +238,42 @@ const ProblemDetail = () => {
     return new Set(parseTodoRegions(problem.guidedStub).map((region) => region.stepIndex));
   }, [problem]);
   const problemProgress = problem ? getProblemProgress(progress, problem.id) : undefined;
+  const isPreviouslyPassed = Boolean(problemProgress && problemProgress.passes > 0);
+  const showExplainButton = isPreviouslyPassed || (lastSubmitPassed && lastSubmitProblemId === problem?.id);
 
   useEffect(() => {
     if (!problem) return;
+    const savedTab = sessionStorage.getItem(`dsa-gym-problem-tab-${problem.id}`);
+    if (savedTab && tabs.some((tab) => tab.id === savedTab)) {
+      setActiveTab(savedTab);
+    }
     const storageKey = `dsa-gym-code-${problem.id}-${settings.languageMode}`;
     const saved = localStorage.getItem(storageKey);
-    const stubWithHints = getStubForMode(problem.guidedStub, settings.languageMode, settings.hintLevel);
-    setCode(saved ?? stubWithHints);
-    prevCodeRef.current = saved ?? stubWithHints;
+    const stubWithHints = getStubForMode(
+      problem.guidedStub,
+      settings.languageMode,
+      settings.hintLevel,
+      stepHints
+    );
+    const isEdited = saved !== null && lastStubRef.current && saved !== lastStubRef.current;
+    const shouldReplaceSaved =
+      saved !== null &&
+      lastStubRef.current &&
+      saved === lastStubRef.current &&
+      saved !== stubWithHints;
+
+    const baseCode = shouldReplaceSaved ? stubWithHints : saved ?? stubWithHints;
+    const editedWithHints = isEdited && saved ? updateHintsInCode(saved, stepHints) : baseCode;
+    const nextCode = isEdited && saved
+      ? applyHintLevelToStub(editedWithHints, settings.hintLevel)
+      : baseCode;
+
+    setCode(nextCode);
+    prevCodeRef.current = nextCode;
+    if (shouldReplaceSaved || saved === null) {
+      localStorage.setItem(storageKey, nextCode);
+    }
+    lastStubRef.current = stubWithHints;
     if (problemProgress?.explanation) {
       setPatternText(problemProgress.explanation.pattern);
       setWhyText(problemProgress.explanation.why);
@@ -96,7 +283,14 @@ const ProblemDetail = () => {
       setWhyText('');
       setComplexityText('');
     }
-  }, [problem, settings.hintLevel, settings.languageMode, problemProgress?.explanation]);
+  }, [problem, settings.hintLevel, settings.languageMode, problemProgress?.explanation, stepHints]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    if (problem) {
+      sessionStorage.setItem(`dsa-gym-problem-tab-${problem.id}`, tabId);
+    }
+  };
 
   useEffect(() => {
     if (!problem) return;
@@ -139,6 +333,11 @@ const ProblemDetail = () => {
   const runTests = async (submit: boolean) => {
     setIsRunning(true);
     setRunResult(undefined);
+    setLastRunMode(submit ? 'submit' : 'run');
+    if (submit) {
+      setLastSubmitPassed(false);
+      setLastSubmitProblemId(problem.id);
+    }
     const tests = submit ? [...problem.tests.visible, ...problem.tests.hidden] : problem.tests.visible;
 
     updateProgress(problem.id, {
@@ -164,7 +363,8 @@ const ProblemDetail = () => {
         lastPassedAt: new Date().toISOString()
       });
       setShowRating(true);
-      setShowExplainModal(true);
+      setLastSubmitPassed(true);
+      setLastSubmitProblemId(problem.id);
     }
   };
 
@@ -192,7 +392,12 @@ const ProblemDetail = () => {
 
   const handleReset = () => {
     resetProblem(problem.id);
-    const resetCode = getStubForMode(problem.guidedStub, settings.languageMode, settings.hintLevel);
+    const resetCode = getStubForMode(
+      problem.guidedStub,
+      settings.languageMode,
+      settings.hintLevel,
+      stepHints
+    );
     setCode(resetCode);
     prevCodeRef.current = resetCode;
     localStorage.setItem(`dsa-gym-code-${problem.id}-${settings.languageMode}`, resetCode);
@@ -232,7 +437,7 @@ const ProblemDetail = () => {
         </button>
       </div>
 
-      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={tabs} active={activeTab} onChange={handleTabChange} />
 
       {activeTab === 'statement' && (
         <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -301,7 +506,7 @@ const ProblemDetail = () => {
                   onClick={() => runTests(false)}
                   disabled={isRunning}
                 >
-                  Run tests
+                  Run Tests
                 </button>
                 <button
                   className="rounded-full bg-ember-500 px-4 py-2 text-xs font-semibold text-ink-950"
@@ -310,8 +515,19 @@ const ProblemDetail = () => {
                 >
                   Submit
                 </button>
+                {showExplainButton && (
+                  <button
+                    className="rounded-full border border-emerald-400/40 px-4 py-2 text-xs text-emerald-200"
+                    onClick={() => setShowExplainModal(true)}
+                  >
+                    Explain it back
+                  </button>
+                )}
               </div>
             </div>
+            <p className="text-xs text-mist-400">
+              Submit runs hidden tests too, so passing “Run Tests” does not guarantee a Submit pass.
+            </p>
             <CodeEditor value={code} language={settings.languageMode === 'ts' ? 'typescript' : 'javascript'} onChange={onCodeChange} />
             <div className="rounded-2xl border border-white/10 p-4">
               <div className="flex items-center justify-between">
@@ -324,6 +540,31 @@ const ProblemDetail = () => {
                   Copy failure report
                 </button>
               </div>
+              {runResult && (
+                <div
+                  className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
+                    runResult.ok ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/40 text-amber-200'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="uppercase tracking-[0.2em]">
+                      {lastRunMode === 'submit' ? 'Submit' : 'Run'}
+                    </span>
+                    <span className="text-mist-300">·</span>
+                    <span>
+                      {runResult.ok ? 'Passed' : 'Failed'} {runResult.results.length}/{runResult.results.length} tests
+                    </span>
+                    {lastRunMode === 'submit' && (
+                      <span className="text-mist-300">includes hidden tests</span>
+                    )}
+                  </div>
+                  {runResult.error && (
+                    <p className="mt-1 text-xs text-mist-300">
+                      {runResult.errorType ?? 'Error'}: {runResult.error}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="mt-3">
                 <TestResults result={runResult} />
               </div>
@@ -334,7 +575,14 @@ const ProblemDetail = () => {
               <h3 className="font-display text-lg">Steps</h3>
               <p className="text-xs text-mist-300">Active step: {activeStep}</p>
               <div className="mt-4">
-                <StepList steps={steps} completion={completion} activeStep={activeStep} />
+                <StepList
+                  steps={steps}
+                  completion={completion}
+                  activeStep={activeStep}
+                  showDescription={settings.hintLevel > 0}
+                  hintLevel={settings.hintLevel}
+                  hints={stepHints}
+                />
               </div>
               {settings.lockSteps && (
                 <p className="mt-4 text-xs text-mist-300">Later steps are locked until the active step is complete.</p>

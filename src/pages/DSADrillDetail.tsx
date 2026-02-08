@@ -204,7 +204,7 @@ const DSADrillDetail = () => {
             {drill.drillType !== 'pattern' && (
               <div className="flex gap-2">
                 <button className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200" onClick={runTests}>
-                  Run tests
+                  Run Tests
                 </button>
                 <button className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200" onClick={() => setEnded(true)}>
                   End drill

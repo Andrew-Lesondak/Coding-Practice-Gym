@@ -361,7 +361,7 @@ const AdaptiveSession = () => {
           <CodeEditor value={code} language="typescript" onChange={onCodeChange} />
           <div className="flex flex-wrap gap-2">
             <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={runTests}>
-              Run tests
+              Run Tests
             </button>
             <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={() => finalizeDSA()}>
               Finish block

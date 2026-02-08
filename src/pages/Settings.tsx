@@ -8,15 +8,17 @@ const Settings = () => {
 
   return (
     <div className="space-y-6">
+      <div>
+        <button
+          onClick={() => navigate(-1)}
+          className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200"
+        >
+          Back
+        </button>
+      </div>
       <section className="glass rounded-2xl p-6">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-2xl font-semibold">Settings</h1>
-          <button
-            onClick={() => navigate(-1)}
-            className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200"
-          >
-            Back
-          </button>
         </div>
         <p className="mt-2 text-sm text-mist-200">Customize hint levels, step locking, and language mode.</p>
       </section>
