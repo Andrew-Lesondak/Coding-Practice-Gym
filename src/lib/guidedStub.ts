@@ -62,7 +62,6 @@ export const computeStepCompletion = (
   const originalRegions = parseTodoRegions(originalStub);
   const currentRegions = parseTodoRegions(currentCode);
   const completion: Record<number, StepStatus> = {};
-  const regionSteps = new Set(originalRegions.map((region) => region.stepIndex));
 
   for (const region of originalRegions) {
     const current = currentRegions.find((item) => item.stepIndex === region.stepIndex);
