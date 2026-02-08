@@ -44,7 +44,7 @@ vi.mock('../lib/useQuizQuestions', () => ({
 }));
 
 describe('quiz session interactions', () => {
-  it('single choice selection + submit shows feedback', () => {
+  it('single choice selection + submit shows feedback', async () => {
     const sessionId = 'session-1';
     saveQuizSession({
       id: sessionId,
@@ -73,10 +73,10 @@ describe('quiz session interactions', () => {
 
     fireEvent.click(screen.getByText('A'));
     fireEvent.click(screen.getByText('Submit'));
-    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(await screen.findByText('Correct')).toBeInTheDocument();
   });
 
-  it('multiple choice selection + submit shows feedback', () => {
+  it('multiple choice selection + submit shows feedback', async () => {
     const sessionId = 'session-2';
     saveQuizSession({
       id: sessionId,
@@ -106,6 +106,6 @@ describe('quiz session interactions', () => {
     fireEvent.click(screen.getByText('A'));
     fireEvent.click(screen.getByText('C'));
     fireEvent.click(screen.getByText('Submit'));
-    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(await screen.findByText('Correct')).toBeInTheDocument();
   });
 });

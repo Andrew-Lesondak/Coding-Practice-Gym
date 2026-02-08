@@ -17,7 +17,6 @@ describe('progress selectors', () => {
       },
       systemDesign: {},
       systemDesignDrills: {},
-      quizzes: {},
       quizzes: {}
     };
 

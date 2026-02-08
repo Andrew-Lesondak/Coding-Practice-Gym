@@ -6,7 +6,6 @@ const emptyProgress: ProgressState = {
   problems: {},
   systemDesign: {},
   systemDesignDrills: {},
-      quizzes: {},
   quizzes: {}
 };
 

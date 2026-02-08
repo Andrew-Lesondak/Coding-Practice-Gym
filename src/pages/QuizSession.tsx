@@ -5,7 +5,7 @@ import { getQuizSession, saveQuizSession } from '../lib/quizStorage';
 import { gradeQuizAnswer } from '../lib/quizEngine';
 import QuizQuestionCard from '../components/QuizQuestionCard';
 import QuizProgressHeader from '../components/QuizProgressHeader';
-import { QuizQuestion } from '../types/quiz';
+import { QuizQuestion, QuizSession as QuizSessionType } from '../types/quiz';
 import { useAppStore, getQuizProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
 
@@ -32,8 +32,20 @@ const QuizSession = () => {
   const startTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const clearTimer = () => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
-  const session = sessionId ? getQuizSession(sessionId) : null;
+  const [session, setSession] = useState<QuizSessionType | null>(() =>
+    sessionId ? getQuizSession(sessionId) : null
+  );
+
+  useEffect(() => {
+    setSession(sessionId ? getQuizSession(sessionId) : null);
+  }, [sessionId]);
   const sessionQuestions = useMemo(() => {
     if (!session) return [];
     return session.questionIds
@@ -53,7 +65,7 @@ const QuizSession = () => {
     if (session.settings.timed) {
       setTimeLeft(session.settings.secondsPerQuestion);
       startTimeRef.current = Date.now();
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      clearTimer();
       intervalRef.current = window.setInterval(() => {
         const elapsed = Math.floor((Date.now() - (startTimeRef.current ?? Date.now())) / 1000);
         const next = Math.max(0, session.settings.secondsPerQuestion - elapsed);
@@ -61,14 +73,13 @@ const QuizSession = () => {
       }, 250);
     } else {
       setTimeLeft(undefined);
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      clearTimer();
       startTimeRef.current = Date.now();
     }
     return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      clearTimer();
     };
-  }, [session, currentIndex, current]);
+  }, [currentIndex, current]);
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -124,6 +135,7 @@ const QuizSession = () => {
       }
     };
     saveQuizSession(nextSession);
+    setSession(nextSession);
 
     const existing = getQuizProgress(progress, current.id);
     const nextAttempts = existing.attempts + 1;
@@ -146,6 +158,7 @@ const QuizSession = () => {
     if (session.settings.mode === 'immediate') {
       setShowFeedback(true);
       setLastCorrect(isCorrect);
+      clearTimer();
     } else {
       goNext(nextSession);
     }
@@ -155,6 +168,8 @@ const QuizSession = () => {
     if (currentIndex + 1 >= total) {
       const finished = { ...nextSession, finishedAt: new Date().toISOString() };
       saveQuizSession(finished);
+      setSession(finished);
+      clearTimer();
       navigate(`/quizzes/review/${finished.id}`);
     } else {
       setCurrentIndex((prev) => prev + 1);

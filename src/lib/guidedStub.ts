@@ -2,7 +2,7 @@ import { Step, TodoRegion } from '../types/problem';
 import { StepStatus } from '../types/progress';
 
 const stepRegex = /^\s*\/\/\s*Step\s+(\d+(?:\.\d+)?)\s*:\s*(.+)$/gm;
-const todoStartRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+start\)\s*\n/g;
+const todoStartRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+start\)[ \t]*\r?\n/g;
 const todoEndRegex = /\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+end\)/g;
 
 export const parseSteps = (stub: string): Step[] => {
@@ -56,6 +56,11 @@ export const regionHasCode = (region: string) => {
   return /[A-Za-z0-9_]{2,}/.test(tokens);
 };
 
+const regionHasMeaningfulText = (region: string) => {
+  const withoutComments = stripComments(region);
+  return /\S/.test(withoutComments);
+};
+
 export const computeStepCompletion = (
   currentCode: string,
   originalStub: string
@@ -71,13 +76,11 @@ export const computeStepCompletion = (
       completion[region.stepIndex] = 'not_started';
       continue;
     }
-    const originalNorm = normalizeRegion(region.originalContent);
-    const currentNorm = normalizeRegion(current.originalContent);
-    const originalHasCode = regionHasCode(region.originalContent);
     const currentHasCode = regionHasCode(current.originalContent);
+    const currentHasMeaningful = regionHasMeaningfulText(current.originalContent);
     if (currentHasCode) {
       completion[region.stepIndex] = 'completed';
-    } else if (originalHasCode && originalNorm !== currentNorm) {
+    } else if (currentHasMeaningful) {
       completion[region.stepIndex] = 'in_progress';
     } else {
       completion[region.stepIndex] = 'not_started';
@@ -86,6 +89,20 @@ export const computeStepCompletion = (
 
   steps.forEach((step) => {
     if (completion[step.index]) {
+      const children = steps.filter(
+        (item) => Math.floor(item.index) === step.index && item.index !== step.index
+      );
+      if (children.length === 0) {
+        return;
+      }
+      const childStatuses = children.map((child) => completion[child.index] ?? 'not_started');
+      const allCompleted = childStatuses.every((status) => status === 'completed');
+      const anyStarted = childStatuses.some((status) => status !== 'not_started');
+      if (completion[step.index] === 'not_started' && anyStarted) {
+        completion[step.index] = 'in_progress';
+      } else if (completion[step.index] !== 'completed' && allCompleted) {
+        completion[step.index] = 'completed';
+      }
       return;
     }
     const children = steps.filter(
