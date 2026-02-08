@@ -1,4 +1,5 @@
 import { problems } from '../../data/problems';
+import { quizQuestions } from '../../data/quizzes';
 import { systemDesignDrills } from '../../data/systemDesignDrills';
 import { loadDrillAttempts } from '../dsaDrillStorage';
 import { loadMockSessions } from '../mockInterviewStorage';
@@ -8,7 +9,8 @@ import {
   DSASpeedDrillStats,
   SystemDesignDrillStats,
   MockInterviewStats,
-  Insight
+  Insight,
+  QuizStats
 } from './types';
 import { ProgressState } from '../../types/progress';
 
@@ -76,6 +78,23 @@ export const buildMockInterviewStats = (): MockInterviewStats[] => {
     phaseDurations: session.phaseDurations ?? {},
     confidence: session.confidenceRating
   }));
+};
+
+export const buildQuizStats = (progress: ProgressState): QuizStats[] => {
+  return quizQuestions.map((question) => {
+    const p = progress.quizzes[question.id];
+    const attempts = p?.attempts ?? 0;
+    const correctCount = p?.correctCount ?? 0;
+    return {
+      questionId: question.id,
+      topic: question.topic,
+      subtopic: question.subtopic,
+      attempts,
+      correctCount,
+      accuracy: attempts ? correctCount / attempts : 0,
+      lastAnsweredAt: p?.lastAnsweredAt
+    };
+  });
 };
 
 export const generateInsights = (

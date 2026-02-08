@@ -5,7 +5,9 @@ import { ProgressState } from '../types/progress';
 const emptyProgress: ProgressState = {
   problems: {},
   systemDesign: {},
-  systemDesignDrills: {}
+  systemDesignDrills: {},
+      quizzes: {},
+  quizzes: {}
 };
 
 describe('adaptivePlanner', () => {

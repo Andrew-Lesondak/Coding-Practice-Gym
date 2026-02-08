@@ -18,6 +18,7 @@ import { updateSchedule } from '../lib/spacedRepetition';
 import { useAppStore, getProblemProgress } from '../store/useAppStore';
 import { toJavaScriptStub } from '../lib/codeTransform';
 import { stableStringify } from '../lib/runnerUtils';
+import { evaluateStepChecks } from '../lib/stepChecks';
 import { StepStatus } from '../types/progress';
 
 const tabs = [
@@ -121,6 +122,10 @@ const ProblemDetail = () => {
   }
 
   const activeStep = getFirstIncompleteStep(completion, steps, regionSteps);
+  const stepCheckResult = useMemo(
+    () => evaluateStepChecks(code, problem.stepChecks ?? [], activeStep),
+    [code, problem.stepChecks, activeStep]
+  );
 
   const onCodeChange = (next: string) => {
     if (settings.lockSteps && findLockedRegion(prevCodeRef.current, next, activeStep)) {
@@ -335,6 +340,25 @@ const ProblemDetail = () => {
               {settings.lockSteps && (
                 <p className="mt-4 text-xs text-mist-300">Later steps are locked until the active step is complete.</p>
               )}
+              <div className="mt-4 rounded-xl border border-white/10 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Step checks</p>
+                {stepCheckResult.checks.length === 0 ? (
+                  <p className="mt-2 text-xs text-mist-400">No checks for this step.</p>
+                ) : (
+                  <ul className="mt-2 space-y-2 text-xs text-mist-200">
+                    {stepCheckResult.checks.map((check, index) => (
+                      <li key={`${check.message}-${index}`} className="flex items-center gap-2">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            check.passed ? 'bg-emerald-400' : 'bg-amber-400'
+                          }`}
+                        />
+                        <span>{check.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
             <div className="glass rounded-2xl p-5">
               <h3 className="font-display text-lg">Hints</h3>

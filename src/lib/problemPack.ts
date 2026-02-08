@@ -1,18 +1,26 @@
 import { Problem, ProblemPack } from '../types/problem';
 import { SystemDesignPrompt } from '../types/systemDesign';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
+import { QuizQuestion } from '../types/quiz';
 
 const OVERLAY_KEY = 'dsa-gym-overlay-pack';
 const OVERLAY_ENABLED_KEY = 'dsa-gym-overlay-enabled';
 
-export type OverlayPack = ProblemPack & { systemDesignPrompts?: SystemDesignPrompt[]; systemDesignDrills?: SystemDesignDrill[] };
+export type OverlayPack = ProblemPack & {
+  systemDesignPrompts?: SystemDesignPrompt[];
+  systemDesignDrills?: SystemDesignDrill[];
+  quizQuestions?: QuizQuestion[];
+};
 
 export const loadOverlayPack = (): OverlayPack | null => {
   const raw = localStorage.getItem(OVERLAY_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as OverlayPack;
-    if (!parsed || !Array.isArray(parsed.problems)) return null;
+    if (!parsed) return null;
+    if (!Array.isArray(parsed.problems)) {
+      parsed.problems = [];
+    }
     return parsed;
   } catch {
     return null;
@@ -51,5 +59,13 @@ export const mergeSystemDesignPacks = (
   const map = new Map<string, SystemDesignPrompt>();
   base.forEach((prompt) => map.set(prompt.id, prompt));
   overlay.forEach((prompt) => map.set(prompt.id, prompt));
+  return Array.from(map.values());
+};
+
+export const mergeQuizPacks = (base: QuizQuestion[], overlay?: QuizQuestion[]): QuizQuestion[] => {
+  if (!overlay || overlay.length === 0) return base;
+  const map = new Map<string, QuizQuestion>();
+  base.forEach((question) => map.set(question.id, question));
+  overlay.forEach((question) => map.set(question.id, question));
   return Array.from(map.values());
 };

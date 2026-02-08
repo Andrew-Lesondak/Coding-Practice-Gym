@@ -39,6 +39,16 @@ export type MockInterviewStats = {
   confidence?: number;
 };
 
+export type QuizStats = {
+  questionId: string;
+  topic: string;
+  subtopic: string;
+  attempts: number;
+  correctCount: number;
+  accuracy: number;
+  lastAnsweredAt?: string;
+};
+
 export type Insight = {
   id: string;
   title: string;

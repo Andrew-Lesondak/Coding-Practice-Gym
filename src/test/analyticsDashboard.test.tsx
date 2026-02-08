@@ -8,7 +8,8 @@ vi.mock('../lib/dsaDrillStorage', () => ({ loadDrillAttempts: () => [] }));
 describe('AnalyticsDashboard', () => {
   beforeEach(() => {
     useAppStore.setState({
-      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {},
+      quizzes: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false },
       overlayVersion: 0
     } as any);

@@ -58,6 +58,14 @@ Mock interviews simulate a 45-minute system design interview using a fixed seque
 
 DSA Speed Drills provide short, focused exercises (3–10 minutes) using existing problems. Drills are partial: pattern recognition, core loop, invariant maintenance, or bug-fix. They run visible tests only and never replace guided stubs.
 
+## JS/React Quizzes
+
+Quizzes are rapid-fire, objective questions with immediate feedback and spaced repetition scheduling.
+
+- Routes: `/quizzes`, `/quizzes/catalog`, `/quizzes/session`, `/quizzes/review/:sessionId`
+- Supports true/false, single choice, and multiple choice.
+- Sessions prioritize due questions, then weak subtopics, then new questions.
+
 ## Adaptive Interview Paths
 
 Adaptive Interview Paths generate deterministic, explainable session plans that mix reviews, drills, and timed blocks based on spaced repetition due items, weaknesses, speed gaps, transfer gaps, and confidence calibration.
@@ -167,6 +175,7 @@ Visit `/author` in dev mode to draft a new problem in the browser. The authoring
 - Save to a local overlay pack stored in `localStorage` (dev only).
 
 Switch the authoring mode to “System Design” to draft a system design prompt and rubric. Validation checks step markers and rubric weights before saving.
+Switch to “Quizzes” to draft quiz questions and validate choices/correct answers.
 
 ### Stub marker format
 
@@ -184,6 +193,8 @@ Step numbers must be sequential starting at 1, and each step must have exactly o
 Overlay problems are merged with the built-in pack at runtime. If an overlay problem shares the same `id`, the overlay version replaces the built-in one. Use the overlay toggle in `/author` to enable or disable overlay problems.
 
 Overlay packs also support system design prompts via the `systemDesignPrompts` array. The merge rule is the same: overlay prompts replace built-ins with matching `id`.
+
+Overlay packs also support quiz questions via the `quizQuestions` array.
 
 ## Roadmap (v2 ideas)
 

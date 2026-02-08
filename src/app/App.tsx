@@ -18,6 +18,10 @@ import DSADrillDetail from '../pages/DSADrillDetail';
 import AnalyticsDashboard from '../pages/AnalyticsDashboard';
 import AdaptiveDashboard from '../pages/AdaptiveDashboard';
 import AdaptiveSession from '../pages/AdaptiveSession';
+import QuizDashboard from '../pages/QuizDashboard';
+import QuizCatalog from '../pages/QuizCatalog';
+import QuizSession from '../pages/QuizSession';
+import QuizReview from '../pages/QuizReview';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 
@@ -66,6 +70,10 @@ const App = () => {
         <Route path="/analytics" element={<AnalyticsDashboard />} />
         <Route path="/adaptive" element={<AdaptiveDashboard />} />
         <Route path="/adaptive/session/:sessionId" element={<AdaptiveSession />} />
+        <Route path="/quizzes" element={<QuizDashboard />} />
+        <Route path="/quizzes/catalog" element={<QuizCatalog />} />
+        <Route path="/quizzes/session" element={<QuizSession />} />
+        <Route path="/quizzes/review/:sessionId" element={<QuizReview />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />

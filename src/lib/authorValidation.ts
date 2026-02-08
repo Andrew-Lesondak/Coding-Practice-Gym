@@ -6,6 +6,7 @@ import { parseDesignSteps, parseTemplateRegions } from './systemDesignStub';
 import { SystemDesignPrompt } from '../types/systemDesign';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { systemDesignPrompts } from '../data/systemDesignPrompts';
+import { QuizQuestion } from '../types/quiz';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -186,6 +187,41 @@ export const validateTests = (tests: { name: string; input: string; expected: st
       messages.push({ type: 'error', message: `Test "${test.name}" has invalid JSON expected output.` });
     }
   });
+  return messages;
+};
+
+export const validateQuizQuestion = (question: QuizQuestion): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (!question.id) messages.push({ type: 'error', message: 'Quiz question id is required.' });
+  if (!question.promptMarkdown) messages.push({ type: 'error', message: 'Prompt is required.' });
+  if (!question.explanationMarkdown) messages.push({ type: 'error', message: 'Explanation is required.' });
+  if (!question.subtopic) messages.push({ type: 'error', message: 'Subtopic is required.' });
+  if (question.type !== 'true_false') {
+    if (!question.choices || question.choices.length < 2) {
+      messages.push({ type: 'error', message: 'Choices must include at least 2 options.' });
+    }
+  }
+  if (question.type === 'true_false') {
+    if (typeof question.correct.true_false !== 'boolean') {
+      messages.push({ type: 'error', message: 'True/false answer must be set.' });
+    }
+  }
+  if (question.type === 'single_choice') {
+    const ids = new Set((question.choices ?? []).map((choice) => choice.id));
+    if (!question.correct.single_choice || !ids.has(question.correct.single_choice)) {
+      messages.push({ type: 'error', message: 'Single choice correct id must match a choice.' });
+    }
+  }
+  if (question.type === 'multiple_choice') {
+    const ids = new Set((question.choices ?? []).map((choice) => choice.id));
+    const selected = question.correct.multiple_choice ?? [];
+    if (selected.length < 2) {
+      messages.push({ type: 'warning', message: 'Multiple choice should include at least two correct answers.' });
+    }
+    if (selected.length === 0 || selected.some((id) => !ids.has(id))) {
+      messages.push({ type: 'error', message: 'Multiple choice correct ids must match choices.' });
+    }
+  }
   return messages;
 };
 

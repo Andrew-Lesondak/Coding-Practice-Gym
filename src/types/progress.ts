@@ -1,3 +1,5 @@
+import { QuizProgress } from './quiz';
+
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
 
 export type StepCompletion = {
@@ -35,6 +37,7 @@ export type ProgressState = {
   problems: Record<string, ProblemProgress>;
   systemDesign: Record<string, SystemDesignProgress>;
   systemDesignDrills: Record<string, SystemDesignDrillProgress>;
+  quizzes: Record<string, QuizProgress>;
 };
 
 export type SystemDesignProgress = {

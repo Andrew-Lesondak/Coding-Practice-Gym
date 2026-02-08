@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Problem, TestCase } from '../types/problem';
 import { SystemDesignPrompt } from '../types/systemDesign';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
+import { QuizQuestion } from '../types/quiz';
 import { useAppStore } from '../store/useAppStore';
 import { loadOverlayPack, saveOverlayPack, OverlayPack } from '../lib/problemPack';
 import {
@@ -12,7 +13,8 @@ import {
   validateTests,
   ValidationMessage,
   validateRubric,
-  validateDrill
+  validateDrill,
+  validateQuizQuestion
 } from '../lib/authorValidation';
 import { stableStringify } from '../lib/runnerUtils';
 
@@ -31,6 +33,7 @@ const defaultProblem = (): Problem => ({
   referenceSolution: '',
   guidedStub: '',
   tests: { visible: [emptyTest()], hidden: [] },
+  stepChecks: [],
   metadata: {
     timeComplexity: '',
     spaceComplexity: '',
@@ -56,10 +59,27 @@ const defaultSystemDesignPrompt = (): SystemDesignPrompt => ({
   commonPitfalls: []
 });
 
+const defaultQuizQuestion = (): QuizQuestion => ({
+  id: '',
+  topic: 'javascript',
+  subtopic: '',
+  difficulty: 'easy',
+  type: 'single_choice',
+  promptMarkdown: '',
+  choices: [
+    { id: 'a', text: '' },
+    { id: 'b', text: '' }
+  ],
+  correct: { single_choice: 'a' },
+  explanationMarkdown: '',
+  tags: []
+});
+
 const Author = () => {
-  const [mode, setMode] = useState<'dsa' | 'system' | 'drill'>('dsa');
+  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz'>('dsa');
   const [draft, setDraft] = useState<Problem>(defaultProblem());
   const [designDraft, setDesignDraft] = useState<SystemDesignPrompt>(defaultSystemDesignPrompt());
+  const [quizDraft, setQuizDraft] = useState<QuizQuestion>(defaultQuizQuestion());
   const [drillDraft, setDrillDraft] = useState<SystemDesignDrill>({
     id: '',
     title: '',
@@ -90,6 +110,8 @@ const Author = () => {
     } else if (mode === 'system') {
       msgs.push(...validateDesignStepMarkers(designDraft.guidedDesignStubMarkdown));
       msgs.push(...validateRubric(designDraft.rubric));
+    } else if (mode === 'quiz') {
+      msgs.push(...validateQuizQuestion(quizDraft));
     } else {
       msgs.push(...validateDesignStepMarkers(drillDraft.starterTemplateMarkdown));
       msgs.push(...validateDrill(drillDraft));
@@ -101,7 +123,8 @@ const Author = () => {
     draft.tests.hidden,
     draft.tests.visible,
     designDraft.guidedDesignStubMarkdown,
-    designDraft.rubric
+    designDraft.rubric,
+    quizDraft
   ]);
 
   useEffect(() => {
@@ -135,6 +158,7 @@ const Author = () => {
   const updateDraft = (patch: Partial<Problem>) => setDraft((prev) => ({ ...prev, ...patch }));
   const updateDesignDraft = (patch: Partial<SystemDesignPrompt>) => setDesignDraft((prev) => ({ ...prev, ...patch }));
   const updateDrillDraft = (patch: Partial<SystemDesignDrill>) => setDrillDraft((prev) => ({ ...prev, ...patch }));
+  const updateQuizDraft = (patch: Partial<QuizQuestion>) => setQuizDraft((prev) => ({ ...prev, ...patch }));
 
   const updateTests = (kind: 'visible' | 'hidden', index: number, patch: Partial<TestCase>) => {
     setDraft((prev) => {
@@ -159,7 +183,11 @@ const Author = () => {
   };
 
   const exportJson = () => {
-    const payload = JSON.stringify(mode === 'dsa' ? draft : mode === 'system' ? designDraft : drillDraft, null, 2);
+    const payload = JSON.stringify(
+      mode === 'dsa' ? draft : mode === 'system' ? designDraft : mode === 'quiz' ? quizDraft : drillDraft,
+      null,
+      2
+    );
     setJsonBlob(payload);
   };
 
@@ -170,6 +198,8 @@ const Author = () => {
         setDraft(parsed as Problem);
       } else if (mode === 'system') {
         setDesignDraft(parsed as SystemDesignPrompt);
+      } else if (mode === 'quiz') {
+        setQuizDraft(parsed as QuizQuestion);
       } else {
         setDrillDraft(parsed as SystemDesignDrill);
       }
@@ -179,7 +209,11 @@ const Author = () => {
   };
 
   const copyJson = async () => {
-    const payload = JSON.stringify(mode === 'dsa' ? draft : mode === 'system' ? designDraft : drillDraft, null, 2);
+    const payload = JSON.stringify(
+      mode === 'dsa' ? draft : mode === 'system' ? designDraft : mode === 'quiz' ? quizDraft : drillDraft,
+      null,
+      2
+    );
     await navigator.clipboard.writeText(payload);
     setJsonBlob(payload);
   };
@@ -191,15 +225,20 @@ const Author = () => {
     const mergedProblems = existing?.problems ?? [];
     const mergedDesign = existing?.systemDesignPrompts ?? [];
     const mergedDrills = existing?.systemDesignDrills ?? [];
+    const mergedQuizzes = existing?.quizQuestions ?? [];
     let nextProblems = mergedProblems;
     let nextDesign = mergedDesign;
     let nextDrills = mergedDrills;
+    let nextQuizzes = mergedQuizzes;
     if (mode === 'dsa') {
       nextProblems = mergedProblems.filter((problem) => problem.id !== draft.id);
       nextProblems.push(draft);
     } else if (mode === 'system') {
       nextDesign = mergedDesign.filter((prompt) => prompt.id !== designDraft.id);
       nextDesign.push(designDraft);
+    } else if (mode === 'quiz') {
+      nextQuizzes = mergedQuizzes.filter((question) => question.id !== quizDraft.id);
+      nextQuizzes.push(quizDraft);
     } else {
       nextDrills = mergedDrills.filter((drill) => drill.id !== drillDraft.id);
       nextDrills.push(drillDraft);
@@ -208,6 +247,7 @@ const Author = () => {
       problems: nextProblems,
       systemDesignPrompts: nextDesign,
       systemDesignDrills: nextDrills,
+      quizQuestions: nextQuizzes,
       updatedAt: new Date().toISOString(),
       version: 1
     };
@@ -263,6 +303,14 @@ const Author = () => {
             onClick={() => setMode('drill')}
           >
             Drills
+          </button>
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'quiz' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('quiz')}
+          >
+            Quizzes
           </button>
         </div>
       </section>
@@ -365,6 +413,94 @@ const Author = () => {
                 />
               </label>
             </div>
+          ) : mode === 'quiz' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                ID
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={quizDraft.id}
+                  onChange={(e) => updateQuizDraft({ id: e.target.value.trim() })}
+                />
+              </label>
+              <label className="text-sm">
+                Topic
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={quizDraft.topic}
+                  onChange={(e) => updateQuizDraft({ topic: e.target.value as QuizQuestion['topic'] })}
+                >
+                  <option value="javascript">JavaScript</option>
+                  <option value="react">React</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="web">Web</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Subtopic
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={quizDraft.subtopic}
+                  onChange={(e) => updateQuizDraft({ subtopic: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Difficulty
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={quizDraft.difficulty}
+                  onChange={(e) => updateQuizDraft({ difficulty: e.target.value as QuizQuestion['difficulty'] })}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Type
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={quizDraft.type}
+                  onChange={(e) => {
+                    const nextType = e.target.value as QuizQuestion['type'];
+                    updateQuizDraft({
+                      type: nextType,
+                      choices:
+                        nextType === 'true_false'
+                          ? undefined
+                          : quizDraft.choices?.length
+                          ? quizDraft.choices
+                          : [
+                              { id: 'a', text: '' },
+                              { id: 'b', text: '' }
+                            ],
+                      correct:
+                        nextType === 'true_false'
+                          ? { true_false: true }
+                          : nextType === 'single_choice'
+                          ? { single_choice: quizDraft.choices?.[0]?.id ?? 'a' }
+                          : { multiple_choice: [] }
+                    });
+                  }}
+                >
+                  <option value="true_false">True/False</option>
+                  <option value="single_choice">Single choice</option>
+                  <option value="multiple_choice">Multiple choice</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Tags (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={quizDraft.tags.join(', ')}
+                  onChange={(e) =>
+                    updateQuizDraft({
+                      tags: e.target.value.split(',').map((v) => v.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm">
@@ -438,6 +574,15 @@ const Author = () => {
                 onChange={(e) => updateDesignDraft({ promptMarkdown: e.target.value })}
               />
             </label>
+          ) : mode === 'quiz' ? (
+            <label className="text-sm">
+              Prompt (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={quizDraft.promptMarkdown}
+                onChange={(e) => updateQuizDraft({ promptMarkdown: e.target.value })}
+              />
+            </label>
           ) : (
             <label className="text-sm">
               Prompt (Markdown)
@@ -449,20 +594,22 @@ const Author = () => {
             </label>
           )}
 
-          <label className="text-sm">
-            Constraints (one per line)
-            <textarea
-              className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-              value={mode === 'dsa' ? draft.constraints.join('\n') : mode === 'system' ? designDraft.constraints.join('\n') : ''}
-              onChange={(e) =>
-                mode === 'dsa'
-                  ? updateDraft({ constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) })
-                  : mode === 'system' ? updateDesignDraft({
-                      constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
-                    }) : undefined
-              }
-            />
-          </label>
+          {(mode === 'dsa' || mode === 'system') && (
+            <label className="text-sm">
+              Constraints (one per line)
+              <textarea
+                className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={mode === 'dsa' ? draft.constraints.join('\n') : designDraft.constraints.join('\n')}
+                onChange={(e) =>
+                  mode === 'dsa'
+                    ? updateDraft({ constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) })
+                    : updateDesignDraft({
+                        constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
+                }
+              />
+            </label>
+          )}
 
           {mode === 'dsa' ? (
             <label className="text-sm">
@@ -482,6 +629,112 @@ const Author = () => {
                 onChange={(e) => updateDesignDraft({ guidedDesignStubMarkdown: e.target.value })}
               />
             </label>
+          ) : mode === 'quiz' ? (
+            <div className="space-y-4">
+              <label className="text-sm">
+                Explanation (Markdown)
+                <textarea
+                  className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={quizDraft.explanationMarkdown}
+                  onChange={(e) => updateQuizDraft({ explanationMarkdown: e.target.value })}
+                />
+              </label>
+              {quizDraft.type !== 'true_false' && (
+                <div className="space-y-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Choices</p>
+                  {quizDraft.choices?.map((choice, index) => (
+                    <div key={choice.id} className="flex gap-2">
+                      <input
+                        className="w-16 rounded-xl border border-white/10 bg-transparent p-2 text-xs"
+                        value={choice.id}
+                        onChange={(e) => {
+                          const next = quizDraft.choices?.map((item, idx) =>
+                            idx === index ? { ...item, id: e.target.value.trim() } : item
+                          );
+                          updateQuizDraft({ choices: next });
+                        }}
+                      />
+                      <input
+                        className="flex-1 rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                        value={choice.text}
+                        onChange={(e) => {
+                          const next = quizDraft.choices?.map((item, idx) =>
+                            idx === index ? { ...item, text: e.target.value } : item
+                          );
+                          updateQuizDraft({ choices: next });
+                        }}
+                      />
+                      <button
+                        className="rounded-full border border-white/10 px-3 text-xs text-mist-300"
+                        onClick={() => {
+                          const next = quizDraft.choices?.filter((_, idx) => idx !== index) ?? [];
+                          updateQuizDraft({ choices: next });
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    className="rounded-full border border-white/10 px-3 py-1 text-xs text-mist-200"
+                    onClick={() =>
+                      updateQuizDraft({
+                        choices: [
+                          ...(quizDraft.choices ?? []),
+                          { id: String.fromCharCode(97 + (quizDraft.choices?.length ?? 0)), text: '' }
+                        ]
+                      })
+                    }
+                  >
+                    Add choice
+                  </button>
+                  <label className="text-sm">
+                    Correct answer
+                    {quizDraft.type === 'single_choice' ? (
+                      <select
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                        value={quizDraft.correct.single_choice ?? ''}
+                        onChange={(e) => updateQuizDraft({ correct: { single_choice: e.target.value } })}
+                      >
+                        {(quizDraft.choices ?? []).map((choice) => (
+                          <option key={choice.id} value={choice.id}>
+                            {choice.id}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                        value={(quizDraft.correct.multiple_choice ?? []).join(', ')}
+                        onChange={(e) =>
+                          updateQuizDraft({
+                            correct: {
+                              multiple_choice: e.target.value
+                                .split(',')
+                                .map((item) => item.trim())
+                                .filter(Boolean)
+                            }
+                          })
+                        }
+                      />
+                    )}
+                  </label>
+                </div>
+              )}
+              {quizDraft.type === 'true_false' && (
+                <label className="text-sm">
+                  Correct answer
+                  <select
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                    value={String(quizDraft.correct.true_false)}
+                    onChange={(e) => updateQuizDraft({ correct: { true_false: e.target.value === 'true' } })}
+                  >
+                    <option value="true">True</option>
+                    <option value="false">False</option>
+                  </select>
+                </label>
+              )}
+            </div>
           ) : (
             <label className="text-sm">
               Starter template (Markdown)
@@ -576,7 +829,7 @@ const Author = () => {
             </div>
           )}
 
-          {mode === 'dsa' ? (
+          {mode === 'dsa' && (
             <label className="text-sm">
               Reference solution
               <textarea
@@ -585,7 +838,8 @@ const Author = () => {
                 onChange={(e) => updateDraft({ referenceSolution: e.target.value })}
               />
             </label>
-          ) : (
+          )}
+          {mode === 'system' && (
             <label className="text-sm">
               Reference overview (Markdown)
               <textarea

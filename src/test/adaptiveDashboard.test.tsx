@@ -13,7 +13,8 @@ const renderWithRouter = () => render(
 describe('AdaptiveDashboard', () => {
   beforeEach(() => {
     useAppStore.setState({
-      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {},
+      quizzes: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false },
       overlayVersion: 0
     } as any);

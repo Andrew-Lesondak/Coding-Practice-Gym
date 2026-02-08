@@ -8,6 +8,7 @@ import {
   StepCompletion,
   SystemDesignDrillProgress
 } from '../types/progress';
+import { QuizProgress } from '../types/quiz';
 import { getOverlayEnabled, setOverlayEnabled } from '../lib/problemPack';
 
 const initialSettings: SettingsState = {
@@ -45,6 +46,13 @@ const createDefaultSystemDesignDrillProgress = (): SystemDesignDrillProgress => 
   explanationHistory: []
 });
 
+const createDefaultQuizProgress = (): QuizProgress => ({
+  attempts: 0,
+  correctCount: 0,
+  reviewIntervalDays: 2,
+  easeFactor: 2.3
+});
+
 type AppState = {
   progress: ProgressState;
   settings: SettingsState;
@@ -73,12 +81,13 @@ type AppState = {
     drillId: string,
     explanation: { decision: string; risk: string }
   ) => void;
+  updateQuizProgress: (questionId: string, patch: Partial<QuizProgress>) => void;
 };
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {} },
       settings: initialSettings,
       overlayVersion: 0,
       updateProblemProgress: (problemId, patch) =>
@@ -300,11 +309,24 @@ export const useAppStore = create<AppState>()(
               }
             }
           };
+        }),
+      updateQuizProgress: (questionId, patch) =>
+        set((state) => {
+          const current = state.progress.quizzes[questionId] ?? createDefaultQuizProgress();
+          return {
+            progress: {
+              ...state.progress,
+              quizzes: {
+                ...state.progress.quizzes,
+                [questionId]: { ...current, ...patch }
+              }
+            }
+          };
         })
     }),
     {
       name: 'dsa-gym-store',
-      version: 5,
+      version: 6,
       migrate: (state, version) => {
         if (version === 1) {
           const next = state as AppState;
@@ -319,6 +341,9 @@ export const useAppStore = create<AppState>()(
           if (!next.progress.systemDesignDrills) {
             next.progress.systemDesignDrills = {};
           }
+          if (!next.progress.quizzes) {
+            next.progress.quizzes = {};
+          }
           if (typeof next.settings.overlayEnabled !== 'boolean') {
             next.settings.overlayEnabled = getOverlayEnabled();
           }
@@ -329,6 +354,9 @@ export const useAppStore = create<AppState>()(
           if (!next.progress.systemDesign) {
             next.progress.systemDesign = {};
           }
+          if (!next.progress.quizzes) {
+            next.progress.quizzes = {};
+          }
           return next;
         }
         if (version === 3) {
@@ -336,12 +364,25 @@ export const useAppStore = create<AppState>()(
           if (!next.progress.systemDesign) {
             next.progress.systemDesign = {};
           }
+          if (!next.progress.quizzes) {
+            next.progress.quizzes = {};
+          }
           return next;
         }
         if (version === 4) {
           const next = state as AppState;
           if (!next.progress.systemDesignDrills) {
             next.progress.systemDesignDrills = {};
+          }
+          if (!next.progress.quizzes) {
+            next.progress.quizzes = {};
+          }
+          return next;
+        }
+        if (version === 5) {
+          const next = state as AppState;
+          if (!next.progress.quizzes) {
+            next.progress.quizzes = {};
           }
           return next;
         }
@@ -372,4 +413,8 @@ export const getSystemDesignDrillProgress = (
   drillId: string
 ): SystemDesignDrillProgress => {
   return state.systemDesignDrills[drillId] ?? createDefaultSystemDesignDrillProgress();
+};
+
+export const getQuizProgress = (state: ProgressState, questionId: string): QuizProgress => {
+  return state.quizzes[questionId] ?? createDefaultQuizProgress();
 };

@@ -55,6 +55,18 @@ describe('completion parser', () => {
     expect(completion[1]).toBe('completed');
   });
 
+  it('single character -> in progress', () => {
+    const edited = base.replace('// TODO(step 1 start)\n\n  // TODO(step 1 end)', '// TODO(step 1 start)\n  x\n  // TODO(step 1 end)');
+    const completion = computeStepCompletion(edited, base);
+    expect(completion[1]).toBe('in_progress');
+  });
+
+  it('single symbol -> in progress', () => {
+    const edited = base.replace('// TODO(step 1 start)\n\n  // TODO(step 1 end)', '// TODO(step 1 start)\n  ;\n  // TODO(step 1 end)');
+    const completion = computeStepCompletion(edited, base);
+    expect(completion[1]).toBe('in_progress');
+  });
+
   it('code plus comments -> completed', () => {
     const edited = base.replace('// TODO(step 1 start)\n\n  // TODO(step 1 end)', '// TODO(step 1 start)\n  // note\n  const x = 1;\n  // TODO(step 1 end)');
     const completion = computeStepCompletion(edited, base);

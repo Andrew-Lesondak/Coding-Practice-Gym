@@ -1,5 +1,12 @@
 import { useAppStore } from '../store/useAppStore';
-import { buildDSAProblemStats, buildDSASpeedDrillStats, buildSystemDesignDrillStats, buildMockInterviewStats, generateInsights } from '../lib/analytics/engine';
+import {
+  buildDSAProblemStats,
+  buildDSASpeedDrillStats,
+  buildSystemDesignDrillStats,
+  buildMockInterviewStats,
+  buildQuizStats,
+  generateInsights
+} from '../lib/analytics/engine';
 
 const AnalyticsDashboard = () => {
   const progress = useAppStore((state) => state.progress);
@@ -7,6 +14,7 @@ const AnalyticsDashboard = () => {
   const drillStats = buildDSASpeedDrillStats();
   const sdDrillStats = buildSystemDesignDrillStats(progress);
   const mockStats = buildMockInterviewStats();
+  const quizStats = buildQuizStats(progress);
   const insights = generateInsights(dsaStats, drillStats, sdDrillStats, mockStats);
 
   const patterns = Array.from(new Set(dsaStats.flatMap((s) => s.patterns)));
@@ -36,6 +44,15 @@ const AnalyticsDashboard = () => {
       mockPhaseTimes[phase] = mockPhaseTimes[phase] ?? [];
       mockPhaseTimes[phase].push(duration);
     });
+  });
+
+  const quizBySubtopic: Record<string, { total: number; correct: number }> = {};
+  quizStats.forEach((stat) => {
+    if (stat.attempts === 0) return;
+    const entry = quizBySubtopic[stat.subtopic] ?? { total: 0, correct: 0 };
+    entry.total += stat.attempts;
+    entry.correct += stat.correctCount;
+    quizBySubtopic[stat.subtopic] = entry;
   });
 
   return (
@@ -98,6 +115,22 @@ const AnalyticsDashboard = () => {
               <div key={cat} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
                 <span>{cat}</span>
                 <span>{Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100)}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="glass rounded-2xl p-6">
+        <h2 className="font-display text-lg">Quiz Accuracy by Subtopic</h2>
+        {Object.keys(quizBySubtopic).length === 0 ? (
+          <p className="mt-3 text-sm text-mist-300">Not enough quiz data yet.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 text-xs text-mist-200">
+            {Object.entries(quizBySubtopic).map(([subtopic, stats]) => (
+              <div key={subtopic} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
+                <span>{subtopic}</span>
+                <span>{Math.round((stats.correct / stats.total) * 100)}%</span>
               </div>
             ))}
           </div>

@@ -51,7 +51,9 @@ const stripComments = (region: string) => {
 
 export const regionHasCode = (region: string) => {
   const withoutComments = stripComments(region);
-  return /\S/.test(withoutComments);
+  if (!/\S/.test(withoutComments)) return false;
+  const tokens = withoutComments.replace(/[^A-Za-z0-9_]+/g, ' ').trim();
+  return /[A-Za-z0-9_]{2,}/.test(tokens);
 };
 
 export const computeStepCompletion = (

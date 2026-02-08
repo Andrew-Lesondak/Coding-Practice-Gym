@@ -33,11 +33,19 @@ export type Problem = {
   outputFormat?: 'plain' | 'linked-list' | 'binary-tree';
   referenceSolution: string;
   guidedStub: string;
+  stepChecks?: StepCheck[];
   tests: {
     visible: TestCase[];
     hidden: TestCase[];
   };
   metadata: ProblemMetadata;
+};
+
+export type StepCheck = {
+  stepIndex: number;
+  kind: 'includes' | 'regex';
+  pattern: string;
+  message: string;
 };
 
 export type ProblemPack = {
