@@ -8,12 +8,16 @@ import { problems } from '../data/problems';
 import { dsaDrills } from '../data/dsaDrills';
 import { systemDesignPrompts } from '../data/systemDesignPrompts';
 import { systemDesignDrills } from '../data/systemDesignDrills';
+import { reactCodingProblems } from '../data/reactCodingProblems';
 
 const titleForTarget = (blockType: AdaptiveBlock['blockType'], targetId: string) => {
   if (blockType.startsWith('dsa')) {
     const drill = dsaDrills.find((d) => d.id === targetId);
     const problem = problems.find((p) => p.id === targetId);
     return drill?.id ?? problem?.title ?? targetId;
+  }
+  if (blockType === 'react_problem') {
+    return reactCodingProblems.find((p) => p.id === targetId)?.title ?? targetId;
   }
   const drill = systemDesignDrills.find((d) => d.id === targetId);
   const prompt = systemDesignPrompts.find((p) => p.id === targetId);

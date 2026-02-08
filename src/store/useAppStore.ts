@@ -9,6 +9,7 @@ import {
   SystemDesignDrillProgress
 } from '../types/progress';
 import { QuizProgress } from '../types/quiz';
+import { ReactCodingProgress } from '../types/reactCoding';
 import { getOverlayEnabled, setOverlayEnabled } from '../lib/problemPack';
 
 const initialSettings: SettingsState = {
@@ -53,6 +54,15 @@ const createDefaultQuizProgress = (): QuizProgress => ({
   easeFactor: 2.3
 });
 
+const createDefaultReactCodingProgress = (): ReactCodingProgress => ({
+  attempts: 0,
+  passes: 0,
+  stepCompletion: {},
+  reviewIntervalDays: 2,
+  easeFactor: 2.3,
+  explanationHistory: []
+});
+
 type AppState = {
   progress: ProgressState;
   settings: SettingsState;
@@ -82,12 +92,18 @@ type AppState = {
     explanation: { decision: string; risk: string }
   ) => void;
   updateQuizProgress: (questionId: string, patch: Partial<QuizProgress>) => void;
+  updateReactCodingProgress: (problemId: string, patch: Partial<ReactCodingProgress>) => void;
+  setReactCodingStepStatus: (problemId: string, stepIndex: number, status: StepCompletion[number]) => void;
+  saveReactCodingExplanation: (
+    problemId: string,
+    explanation: { concept: string; edgeCase: string; reviewWatch: string }
+  ) => void;
 };
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {}, reactCoding: {} },
       settings: initialSettings,
       overlayVersion: 0,
       updateProblemProgress: (problemId, patch) =>
@@ -322,11 +338,64 @@ export const useAppStore = create<AppState>()(
               }
             }
           };
+        }),
+      updateReactCodingProgress: (problemId, patch) =>
+        set((state) => {
+          const current = state.progress.reactCoding[problemId] ?? createDefaultReactCodingProgress();
+          return {
+            progress: {
+              ...state.progress,
+              reactCoding: {
+                ...state.progress.reactCoding,
+                [problemId]: { ...current, ...patch }
+              }
+            }
+          };
+        }),
+      setReactCodingStepStatus: (problemId, stepIndex, status) =>
+        set((state) => {
+          const current = state.progress.reactCoding[problemId] ?? createDefaultReactCodingProgress();
+          return {
+            progress: {
+              ...state.progress,
+              reactCoding: {
+                ...state.progress.reactCoding,
+                [problemId]: {
+                  ...current,
+                  stepCompletion: {
+                    ...current.stepCompletion,
+                    [stepIndex]: status
+                  }
+                }
+              }
+            }
+          };
+        }),
+      saveReactCodingExplanation: (problemId, explanation) =>
+        set((state) => {
+          const current = state.progress.reactCoding[problemId] ?? createDefaultReactCodingProgress();
+          const updatedAt = new Date().toISOString();
+          const existing = current.explanation;
+          const history = current.explanationHistory ?? [];
+          const nextHistory = existing ? [...history, existing] : history;
+          return {
+            progress: {
+              ...state.progress,
+              reactCoding: {
+                ...state.progress.reactCoding,
+                [problemId]: {
+                  ...current,
+                  explanation: { ...explanation, updatedAt },
+                  explanationHistory: nextHistory
+                }
+              }
+            }
+          };
         })
     }),
     {
       name: 'dsa-gym-store',
-      version: 6,
+      version: 7,
       migrate: (state, version) => {
         if (version === 1) {
           const next = state as AppState;
@@ -344,6 +413,9 @@ export const useAppStore = create<AppState>()(
           if (!next.progress.quizzes) {
             next.progress.quizzes = {};
           }
+          if (!next.progress.reactCoding) {
+            next.progress.reactCoding = {};
+          }
           if (typeof next.settings.overlayEnabled !== 'boolean') {
             next.settings.overlayEnabled = getOverlayEnabled();
           }
@@ -357,6 +429,9 @@ export const useAppStore = create<AppState>()(
           if (!next.progress.quizzes) {
             next.progress.quizzes = {};
           }
+          if (!next.progress.reactCoding) {
+            next.progress.reactCoding = {};
+          }
           return next;
         }
         if (version === 3) {
@@ -366,6 +441,9 @@ export const useAppStore = create<AppState>()(
           }
           if (!next.progress.quizzes) {
             next.progress.quizzes = {};
+          }
+          if (!next.progress.reactCoding) {
+            next.progress.reactCoding = {};
           }
           return next;
         }
@@ -377,12 +455,25 @@ export const useAppStore = create<AppState>()(
           if (!next.progress.quizzes) {
             next.progress.quizzes = {};
           }
+          if (!next.progress.reactCoding) {
+            next.progress.reactCoding = {};
+          }
           return next;
         }
         if (version === 5) {
           const next = state as AppState;
           if (!next.progress.quizzes) {
             next.progress.quizzes = {};
+          }
+          if (!next.progress.reactCoding) {
+            next.progress.reactCoding = {};
+          }
+          return next;
+        }
+        if (version === 6) {
+          const next = state as AppState;
+          if (!next.progress.reactCoding) {
+            next.progress.reactCoding = {};
           }
           return next;
         }
@@ -417,4 +508,8 @@ export const getSystemDesignDrillProgress = (
 
 export const getQuizProgress = (state: ProgressState, questionId: string): QuizProgress => {
   return state.quizzes[questionId] ?? createDefaultQuizProgress();
+};
+
+export const getReactCodingProgress = (state: ProgressState, problemId: string): ReactCodingProgress => {
+  return state.reactCoding[problemId] ?? createDefaultReactCodingProgress();
 };

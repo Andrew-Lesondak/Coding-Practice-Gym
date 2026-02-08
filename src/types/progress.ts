@@ -1,4 +1,5 @@
 import { QuizProgress } from './quiz';
+import { ReactCodingProgress } from './reactCoding';
 
 export type StepStatus = 'not_started' | 'in_progress' | 'completed';
 
@@ -38,6 +39,7 @@ export type ProgressState = {
   systemDesign: Record<string, SystemDesignProgress>;
   systemDesignDrills: Record<string, SystemDesignDrillProgress>;
   quizzes: Record<string, QuizProgress>;
+  reactCoding: Record<string, ReactCodingProgress>;
 };
 
 export type SystemDesignProgress = {

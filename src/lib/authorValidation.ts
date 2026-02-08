@@ -7,6 +7,8 @@ import { SystemDesignPrompt } from '../types/systemDesign';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { systemDesignPrompts } from '../data/systemDesignPrompts';
 import { QuizQuestion } from '../types/quiz';
+import { ReactCodingProblem } from '../types/reactCoding';
+import { runReactTests } from './reactRunner';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -221,6 +223,37 @@ export const validateQuizQuestion = (question: QuizQuestion): ValidationMessage[
     if (selected.length === 0 || selected.some((id) => !ids.has(id))) {
       messages.push({ type: 'error', message: 'Multiple choice correct ids must match choices.' });
     }
+  }
+  return messages;
+};
+
+export const validateReactCodingProblem = (problem: ReactCodingProblem): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (!problem.id) messages.push({ type: 'error', message: 'Problem id is required.' });
+  if (!problem.title) messages.push({ type: 'error', message: 'Title is required.' });
+  if (!problem.guidedStubTsx) messages.push({ type: 'error', message: 'Guided stub is required.' });
+  if (!problem.referenceSolutionTsx) messages.push({ type: 'error', message: 'Reference solution is required.' });
+  if (!problem.tests.visible) messages.push({ type: 'error', message: 'Visible tests are required.' });
+  if (!problem.tests.hidden) messages.push({ type: 'warning', message: 'Hidden tests are empty.' });
+  if (problem.requirements.length === 0) messages.push({ type: 'warning', message: 'Add at least one requirement.' });
+  messages.push(...validateStepMarkers(problem.guidedStubTsx));
+  return messages;
+};
+
+export const validateReactCodingReference = async (problem: ReactCodingProblem): Promise<ValidationMessage[]> => {
+  const messages: ValidationMessage[] = [];
+  if (!problem.referenceSolutionTsx) {
+    messages.push({ type: 'error', message: 'Reference solution is required.' });
+    return messages;
+  }
+  const testCode = `${problem.tests.visible}\n${problem.tests.hidden}`;
+  const result = await runReactTests({
+    userCode: problem.referenceSolutionTsx,
+    testCode,
+    timeoutMs: 1500
+  });
+  if (!result.ok) {
+    messages.push({ type: 'error', message: result.error ?? 'Reference solution failed tests.' });
   }
   return messages;
 };

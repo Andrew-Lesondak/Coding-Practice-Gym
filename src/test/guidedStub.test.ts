@@ -14,7 +14,7 @@ describe('guided stub helpers', () => {
   it('detects completion when placeholder changes', () => {
     const edited = stub.replace('// placeholder', 'const x = 1;');
     const completion = computeStepCompletion(edited, stub);
-    expect(completion[1]).toBe('completed');
+    expect(completion[1]).toBe('in_progress');
     expect(completion[1.1]).toBe('not_started');
     expect(completion[2]).toBe('not_started');
   });

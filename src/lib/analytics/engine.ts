@@ -1,5 +1,6 @@
 import { problems } from '../../data/problems';
 import { quizQuestions } from '../../data/quizzes';
+import { reactCodingProblems } from '../../data/reactCodingProblems';
 import { systemDesignDrills } from '../../data/systemDesignDrills';
 import { loadDrillAttempts } from '../dsaDrillStorage';
 import { loadMockSessions } from '../mockInterviewStorage';
@@ -10,7 +11,8 @@ import {
   SystemDesignDrillStats,
   MockInterviewStats,
   Insight,
-  QuizStats
+  QuizStats,
+  ReactCodingStats
 } from './types';
 import { ProgressState } from '../../types/progress';
 
@@ -93,6 +95,31 @@ export const buildQuizStats = (progress: ProgressState): QuizStats[] => {
       correctCount,
       accuracy: attempts ? correctCount / attempts : 0,
       lastAnsweredAt: p?.lastAnsweredAt
+    };
+  });
+};
+
+export const buildReactCodingStats = (progress: ProgressState): ReactCodingStats[] => {
+  return reactCodingProblems.map((problem) => {
+    const p = progress.reactCoding[problem.id];
+    const attempts = p?.attempts ?? 0;
+    const passes = p?.passes ?? 0;
+    const score = attempts ? passes / attempts : 0;
+    let timeToPassSeconds: number | undefined;
+    if (p?.lastAttemptedAt && p?.lastPassedAt) {
+      const diff = new Date(p.lastPassedAt).getTime() - new Date(p.lastAttemptedAt).getTime();
+      if (diff >= 0) timeToPassSeconds = Math.round(diff / 1000);
+    }
+    return {
+      problemId: problem.id,
+      topics: problem.topics,
+      attempts,
+      passes,
+      score,
+      lastAttemptedAt: p?.lastAttemptedAt,
+      lastPassedAt: p?.lastPassedAt,
+      timeToPassSeconds,
+      confidence: p?.lastRating?.confidence
     };
   });
 };

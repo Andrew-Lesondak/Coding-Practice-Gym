@@ -36,6 +36,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
             <NavLink className={navLink} to="/system-design/mock">
               Mock Interview
             </NavLink>
+            <NavLink className={navLink} to="/react">
+              React Coding
+            </NavLink>
             <NavLink className={navLink} to="/quizzes">
               Quizzes
             </NavLink>

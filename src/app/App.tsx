@@ -22,6 +22,9 @@ import QuizDashboard from '../pages/QuizDashboard';
 import QuizCatalog from '../pages/QuizCatalog';
 import QuizSession from '../pages/QuizSession';
 import QuizReview from '../pages/QuizReview';
+import ReactCodingDashboard from '../pages/ReactCodingDashboard';
+import ReactCodingCatalog from '../pages/ReactCodingCatalog';
+import ReactCodingDetail from '../pages/ReactCodingDetail';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 
@@ -74,6 +77,9 @@ const App = () => {
         <Route path="/quizzes/catalog" element={<QuizCatalog />} />
         <Route path="/quizzes/session" element={<QuizSession />} />
         <Route path="/quizzes/review/:sessionId" element={<QuizReview />} />
+        <Route path="/react" element={<ReactCodingDashboard />} />
+        <Route path="/react/catalog" element={<ReactCodingCatalog />} />
+        <Route path="/react/:id" element={<ReactCodingDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />

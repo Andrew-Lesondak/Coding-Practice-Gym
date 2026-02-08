@@ -23,6 +23,16 @@ const StepList = ({
     <div className="space-y-3">
       {steps.map((step) => {
         const status = completion[step.index] ?? 'not_started';
+        const hintText =
+          hintLevel >= 1 && hints?.[step.index]
+            ? hintLevel >= 3
+              ? hints[step.index].level3
+              : hintLevel >= 2
+              ? hints[step.index].level2
+              : hints[step.index].level1
+            : '';
+        const shouldShowHint =
+          hintText.trim().length > 0 && (!showDescription || hintText.trim() !== step.title.trim());
         return (
           <button
             key={step.index}
@@ -51,15 +61,7 @@ const StepList = ({
               </span>
             </div>
             {showDescription && <p className="text-xs text-mist-200">{step.title}</p>}
-            {hintLevel >= 1 && hints?.[step.index] && (
-              <p className="mt-2 text-xs text-mist-300">
-                {hintLevel >= 3
-                  ? hints[step.index].level3
-                  : hintLevel >= 2
-                  ? hints[step.index].level2
-                  : hints[step.index].level1}
-              </p>
-            )}
+            {shouldShowHint && <p className="mt-2 text-xs text-mist-300">{hintText}</p>}
           </button>
         );
       })}

@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import CodeEditor from '../components/CodeEditor';
 import StepList from '../components/StepList';
 import TestResults from '../components/TestResults';
+import ReactTestResults from '../components/ReactTestResults';
 import SystemDesignRubric from '../components/SystemDesignRubric';
 import { AdaptiveBlockOutcome, AdaptiveSessionRun } from '../types/adaptive';
 import { getAdaptivePlan, saveAdaptiveRun, loadAdaptiveRuns } from '../lib/adaptiveStorage';
@@ -11,12 +12,14 @@ import { problems } from '../data/problems';
 import { dsaDrills } from '../data/dsaDrills';
 import { systemDesignPrompts } from '../data/systemDesignPrompts';
 import { systemDesignDrills } from '../data/systemDesignDrills';
+import { reactCodingProblems } from '../data/reactCodingProblems';
 import { parseEditRegions, isEditAllowed } from '../lib/dsaDrillEditRegions';
 import { runInWorker, RunResponse } from '../lib/runnerClient';
 import { getDrillTests } from '../lib/dsaDrillRunner';
 import { computeDesignStepStatus, parseDesignSteps } from '../lib/systemDesignStub';
 import { computeRubricScore } from '../lib/systemDesignRubric';
-import { useAppStore, getProblemProgress, getSystemDesignProgress, getSystemDesignDrillProgress } from '../store/useAppStore';
+import { runReactTests, ReactRunResult } from '../lib/reactRunner';
+import { useAppStore, getProblemProgress, getSystemDesignProgress, getSystemDesignDrillProgress, getReactCodingProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
 import { saveDrillAttempt } from '../lib/dsaDrillStorage';
 
@@ -52,10 +55,12 @@ const AdaptiveSession = () => {
   const updateProblemProgress = useAppStore((state) => state.updateProblemProgress);
   const updateSystemDesignProgress = useAppStore((state) => state.updateSystemDesignProgress);
   const updateSystemDesignDrillProgress = useAppStore((state) => state.updateSystemDesignDrillProgress);
+  const updateReactCodingProgress = useAppStore((state) => state.updateReactCodingProgress);
   const [blockIndex, setBlockIndex] = useState(0);
   const [started, setStarted] = useState(false);
   const [locked, setLocked] = useState(false);
   const [runResult, setRunResult] = useState<RunResponse | undefined>();
+  const [reactRunResult, setReactRunResult] = useState<ReactRunResult | undefined>();
   const [code, setCode] = useState('');
   const [designText, setDesignText] = useState('');
   const [rubricChecks, setRubricChecks] = useState<Record<string, boolean>>({});
@@ -88,6 +93,7 @@ const AdaptiveSession = () => {
     setStarted(false);
     setAutoCompleted(false);
     setRunResult(undefined);
+    setReactRunResult(undefined);
     setPatternText('');
     setExplainText('');
     setConfidence(3);
@@ -104,6 +110,12 @@ const AdaptiveSession = () => {
       const prompt = systemDesignPrompts.find((p) => p.id === block.targetId);
       setDesignText(drill?.starterTemplateMarkdown ?? prompt?.guidedDesignStubMarkdown ?? '');
       setRubricChecks({});
+    }
+    if (block.blockType === 'react_problem') {
+      const problem = reactCodingProblems.find((p) => p.id === block.targetId);
+      const starter = problem?.guidedStubTsx ?? '';
+      setCode(starter);
+      prevCodeRef.current = starter;
     }
   }, [block?.id]);
 
@@ -134,6 +146,10 @@ const AdaptiveSession = () => {
     setAutoCompleted(true);
     if (block.blockType === 'dsa_drill' || block.blockType === 'dsa_timed_problem') {
       runTests().then((result) => finalizeDSA(result));
+      return;
+    }
+    if (block.blockType === 'react_problem') {
+      runReactProblemTests().then((result) => finalizeReact(result));
       return;
     }
     if (block.blockType === 'sd_drill' || block.blockType === 'sd_timed_prompt') {
@@ -251,6 +267,18 @@ const AdaptiveSession = () => {
     return result;
   };
 
+  const runReactProblemTests = async () => {
+    const problem = reactCodingProblems.find((p) => p.id === block.targetId);
+    if (!problem) return undefined;
+    const result = await runReactTests({
+      userCode: code,
+      testCode: problem.tests.visible,
+      timeoutMs: 1500
+    });
+    setReactRunResult(result);
+    return result;
+  };
+
   const finalizeDSA = (result?: RunResponse) => {
     const drill = dsaDrills.find((d) => d.id === block.targetId);
     const problem = problems.find((p) => p.id === block.targetId) ?? problems.find((p) => p.id === drill?.problemId);
@@ -280,6 +308,26 @@ const AdaptiveSession = () => {
         passed: finalResult?.ok ?? false,
         confidence
       });
+    }
+    handleOutcome({ pass: finalResult?.ok ?? false });
+  };
+
+  const finalizeReact = (result?: ReactRunResult) => {
+    const problem = reactCodingProblems.find((p) => p.id === block.targetId);
+    const finalResult = result ?? reactRunResult;
+    if (problem && finalResult) {
+      const current = getReactCodingProgress(progress, problem.id);
+      const next = {
+        ...current,
+        attempts: current.attempts + 1,
+        passes: current.passes + (finalResult.ok ? 1 : 0),
+        lastAttemptedAt: new Date().toISOString()
+      };
+      if (finalResult.ok) {
+        updateReactCodingProgress(problem.id, updateScheduleGeneric(next, 3, confidence));
+      } else {
+        updateReactCodingProgress(problem.id, next);
+      }
     }
     handleOutcome({ pass: finalResult?.ok ?? false });
   };
@@ -322,8 +370,10 @@ const AdaptiveSession = () => {
   const onCodeChange = (next: string) => {
     if (!started) setStarted(true);
     if (locked) return;
-    const drill = dsaDrills.find((d) => d.id === block.targetId);
-    if (drill && !isEditAllowed(prevCodeRef.current, next, regions)) return;
+    if (block.blockType === 'dsa_drill' || block.blockType === 'dsa_timed_problem') {
+      const drill = dsaDrills.find((d) => d.id === block.targetId);
+      if (drill && !isEditAllowed(prevCodeRef.current, next, regions)) return;
+    }
     setCode(next);
     prevCodeRef.current = next;
   };
@@ -368,6 +418,25 @@ const AdaptiveSession = () => {
             </button>
           </div>
           {runResult && <TestResults result={runResult} />}
+        </div>
+      );
+    }
+
+    if (block.blockType === 'react_problem') {
+      const problem = reactCodingProblems.find((p) => p.id === block.targetId);
+      return (
+        <div className="space-y-4">
+          <ReactMarkdown className="text-sm text-mist-200 space-y-3">{problem?.promptMarkdown ?? ''}</ReactMarkdown>
+          <CodeEditor value={code} language="typescript" onChange={onCodeChange} />
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={runReactProblemTests}>
+              Run Tests
+            </button>
+            <button className="rounded-full border border-white/20 px-4 py-2 text-xs text-mist-200" onClick={() => finalizeReact()}>
+              Finish block
+            </button>
+          </div>
+          {reactRunResult && <ReactTestResults result={reactRunResult} />}
         </div>
       );
     }

@@ -3,6 +3,7 @@ import { Problem, TestCase } from '../types/problem';
 import { SystemDesignPrompt } from '../types/systemDesign';
 import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { QuizQuestion } from '../types/quiz';
+import { ReactCodingProblem } from '../types/reactCoding';
 import { useAppStore } from '../store/useAppStore';
 import { loadOverlayPack, saveOverlayPack, OverlayPack } from '../lib/problemPack';
 import {
@@ -14,7 +15,9 @@ import {
   ValidationMessage,
   validateRubric,
   validateDrill,
-  validateQuizQuestion
+  validateQuizQuestion,
+  validateReactCodingProblem,
+  validateReactCodingReference
 } from '../lib/authorValidation';
 import { stableStringify } from '../lib/runnerUtils';
 
@@ -75,11 +78,29 @@ const defaultQuizQuestion = (): QuizQuestion => ({
   tags: []
 });
 
+const defaultReactCodingProblem = (): ReactCodingProblem => ({
+  id: '',
+  title: '',
+  difficulty: 'easy',
+  topics: [],
+  promptMarkdown: '',
+  requirements: [],
+  constraints: [],
+  guidedStubTsx: '',
+  referenceSolutionTsx: '',
+  tests: { visible: '', hidden: '' },
+  metadata: {
+    commonPitfalls: [],
+    recallQuestions: []
+  }
+});
+
 const Author = () => {
-  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz'>('dsa');
+  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz' | 'react'>('dsa');
   const [draft, setDraft] = useState<Problem>(defaultProblem());
   const [designDraft, setDesignDraft] = useState<SystemDesignPrompt>(defaultSystemDesignPrompt());
   const [quizDraft, setQuizDraft] = useState<QuizQuestion>(defaultQuizQuestion());
+  const [reactDraft, setReactDraft] = useState<ReactCodingProblem>(defaultReactCodingProblem());
   const [drillDraft, setDrillDraft] = useState<SystemDesignDrill>({
     id: '',
     title: '',
@@ -112,6 +133,8 @@ const Author = () => {
       msgs.push(...validateRubric(designDraft.rubric));
     } else if (mode === 'quiz') {
       msgs.push(...validateQuizQuestion(quizDraft));
+    } else if (mode === 'react') {
+      msgs.push(...validateReactCodingProblem(reactDraft));
     } else {
       msgs.push(...validateDesignStepMarkers(drillDraft.starterTemplateMarkdown));
       msgs.push(...validateDrill(drillDraft));
@@ -124,7 +147,8 @@ const Author = () => {
     draft.tests.visible,
     designDraft.guidedDesignStubMarkdown,
     designDraft.rubric,
-    quizDraft
+    quizDraft,
+    reactDraft
   ]);
 
   useEffect(() => {
@@ -133,25 +157,36 @@ const Author = () => {
 
   useEffect(() => {
     let timer: number | undefined;
-    if (mode !== 'dsa') {
+    if (mode !== 'dsa' && mode !== 'react') {
       setRefMessages([]);
       return;
     }
-    if (!draft.referenceSolution || !draft.functionName) {
+    if (mode === 'dsa' && (!draft.referenceSolution || !draft.functionName)) {
       setRefMessages([{ type: 'error', message: 'Reference solution and function name are required.' }]);
+      return;
+    }
+    if (mode === 'react' && !reactDraft.referenceSolutionTsx) {
+      setRefMessages([{ type: 'error', message: 'Reference solution is required.' }]);
       return;
     }
     setIsValidatingRef(true);
     timer = window.setTimeout(() => {
-      validateReferenceSolution(draft).then((msgs) => {
-        setRefMessages(msgs.length > 0 ? msgs : [{ type: 'warning', message: 'Reference solution passed all tests.' }]);
-        setIsValidatingRef(false);
-      });
+      if (mode === 'react') {
+        validateReactCodingReference(reactDraft).then((msgs) => {
+          setRefMessages(msgs.length > 0 ? msgs : [{ type: 'warning', message: 'Reference solution passed all tests.' }]);
+          setIsValidatingRef(false);
+        });
+      } else {
+        validateReferenceSolution(draft).then((msgs) => {
+          setRefMessages(msgs.length > 0 ? msgs : [{ type: 'warning', message: 'Reference solution passed all tests.' }]);
+          setIsValidatingRef(false);
+        });
+      }
     }, 400);
     return () => {
       if (timer) window.clearTimeout(timer);
     };
-  }, [draft, mode]);
+  }, [draft, mode, reactDraft]);
 
   const hasBlockingErrors = messages.some((m) => m.type === 'error') || refMessages.some((m) => m.type === 'error');
 
@@ -159,6 +194,7 @@ const Author = () => {
   const updateDesignDraft = (patch: Partial<SystemDesignPrompt>) => setDesignDraft((prev) => ({ ...prev, ...patch }));
   const updateDrillDraft = (patch: Partial<SystemDesignDrill>) => setDrillDraft((prev) => ({ ...prev, ...patch }));
   const updateQuizDraft = (patch: Partial<QuizQuestion>) => setQuizDraft((prev) => ({ ...prev, ...patch }));
+  const updateReactDraft = (patch: Partial<ReactCodingProblem>) => setReactDraft((prev) => ({ ...prev, ...patch }));
 
   const updateTests = (kind: 'visible' | 'hidden', index: number, patch: Partial<TestCase>) => {
     setDraft((prev) => {
@@ -184,7 +220,15 @@ const Author = () => {
 
   const exportJson = () => {
     const payload = JSON.stringify(
-      mode === 'dsa' ? draft : mode === 'system' ? designDraft : mode === 'quiz' ? quizDraft : drillDraft,
+      mode === 'dsa'
+        ? draft
+        : mode === 'system'
+        ? designDraft
+        : mode === 'quiz'
+        ? quizDraft
+        : mode === 'react'
+        ? reactDraft
+        : drillDraft,
       null,
       2
     );
@@ -200,6 +244,8 @@ const Author = () => {
         setDesignDraft(parsed as SystemDesignPrompt);
       } else if (mode === 'quiz') {
         setQuizDraft(parsed as QuizQuestion);
+      } else if (mode === 'react') {
+        setReactDraft(parsed as ReactCodingProblem);
       } else {
         setDrillDraft(parsed as SystemDesignDrill);
       }
@@ -210,7 +256,15 @@ const Author = () => {
 
   const copyJson = async () => {
     const payload = JSON.stringify(
-      mode === 'dsa' ? draft : mode === 'system' ? designDraft : mode === 'quiz' ? quizDraft : drillDraft,
+      mode === 'dsa'
+        ? draft
+        : mode === 'system'
+        ? designDraft
+        : mode === 'quiz'
+        ? quizDraft
+        : mode === 'react'
+        ? reactDraft
+        : drillDraft,
       null,
       2
     );
@@ -226,10 +280,12 @@ const Author = () => {
     const mergedDesign = existing?.systemDesignPrompts ?? [];
     const mergedDrills = existing?.systemDesignDrills ?? [];
     const mergedQuizzes = existing?.quizQuestions ?? [];
+    const mergedReact = existing?.reactCodingProblems ?? [];
     let nextProblems = mergedProblems;
     let nextDesign = mergedDesign;
     let nextDrills = mergedDrills;
     let nextQuizzes = mergedQuizzes;
+    let nextReact = mergedReact;
     if (mode === 'dsa') {
       nextProblems = mergedProblems.filter((problem) => problem.id !== draft.id);
       nextProblems.push(draft);
@@ -239,6 +295,9 @@ const Author = () => {
     } else if (mode === 'quiz') {
       nextQuizzes = mergedQuizzes.filter((question) => question.id !== quizDraft.id);
       nextQuizzes.push(quizDraft);
+    } else if (mode === 'react') {
+      nextReact = mergedReact.filter((problem) => problem.id !== reactDraft.id);
+      nextReact.push(reactDraft);
     } else {
       nextDrills = mergedDrills.filter((drill) => drill.id !== drillDraft.id);
       nextDrills.push(drillDraft);
@@ -248,6 +307,7 @@ const Author = () => {
       systemDesignPrompts: nextDesign,
       systemDesignDrills: nextDrills,
       quizQuestions: nextQuizzes,
+      reactCodingProblems: nextReact,
       updatedAt: new Date().toISOString(),
       version: 1
     };
@@ -311,6 +371,14 @@ const Author = () => {
             onClick={() => setMode('quiz')}
           >
             Quizzes
+          </button>
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'react' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('react')}
+          >
+            React Coding
           </button>
         </div>
       </section>
@@ -501,6 +569,47 @@ const Author = () => {
                 />
               </label>
             </div>
+          ) : mode === 'react' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                ID
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={reactDraft.id}
+                  onChange={(e) => updateReactDraft({ id: e.target.value.trim() })}
+                />
+              </label>
+              <label className="text-sm">
+                Title
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={reactDraft.title}
+                  onChange={(e) => updateReactDraft({ title: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Difficulty
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={reactDraft.difficulty}
+                  onChange={(e) => updateReactDraft({ difficulty: e.target.value as ReactCodingProblem['difficulty'] })}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Topics (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={reactDraft.topics.join(', ')}
+                  onChange={(e) =>
+                    updateReactDraft({ topics: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) })
+                  }
+                />
+              </label>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm">
@@ -583,6 +692,15 @@ const Author = () => {
                 onChange={(e) => updateQuizDraft({ promptMarkdown: e.target.value })}
               />
             </label>
+          ) : mode === 'react' ? (
+            <label className="text-sm">
+              Prompt (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={reactDraft.promptMarkdown}
+                onChange={(e) => updateReactDraft({ promptMarkdown: e.target.value })}
+              />
+            </label>
           ) : (
             <label className="text-sm">
               Prompt (Markdown)
@@ -594,18 +712,43 @@ const Author = () => {
             </label>
           )}
 
-          {(mode === 'dsa' || mode === 'system') && (
+          {(mode === 'dsa' || mode === 'system' || mode === 'react') && (
             <label className="text-sm">
               Constraints (one per line)
               <textarea
                 className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-                value={mode === 'dsa' ? draft.constraints.join('\n') : designDraft.constraints.join('\n')}
+                value={
+                  mode === 'dsa'
+                    ? draft.constraints.join('\n')
+                    : mode === 'system'
+                    ? designDraft.constraints.join('\n')
+                    : reactDraft.constraints.join('\n')
+                }
                 onChange={(e) =>
                   mode === 'dsa'
                     ? updateDraft({ constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) })
-                    : updateDesignDraft({
+                    : mode === 'system'
+                    ? updateDesignDraft({
                         constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
+                    : updateReactDraft({
+                        constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
+                }
+              />
+            </label>
+          )}
+
+          {mode === 'react' && (
+            <label className="text-sm">
+              Requirements (one per line)
+              <textarea
+                className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={reactDraft.requirements.join('\n')}
+                onChange={(e) =>
+                  updateReactDraft({
+                    requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                  })
                 }
               />
             </label>
@@ -627,6 +770,15 @@ const Author = () => {
                 className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
                 value={designDraft.guidedDesignStubMarkdown}
                 onChange={(e) => updateDesignDraft({ guidedDesignStubMarkdown: e.target.value })}
+              />
+            </label>
+          ) : mode === 'react' ? (
+            <label className="text-sm">
+              Guided stub (TSX)
+              <textarea
+                className="mt-2 h-56 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                value={reactDraft.guidedStubTsx}
+                onChange={(e) => updateReactDraft({ guidedStubTsx: e.target.value })}
               />
             </label>
           ) : mode === 'quiz' ? (
@@ -839,6 +991,16 @@ const Author = () => {
               />
             </label>
           )}
+          {mode === 'react' && (
+            <label className="text-sm">
+              Reference solution (TSX)
+              <textarea
+                className="mt-2 h-56 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                value={reactDraft.referenceSolutionTsx}
+                onChange={(e) => updateReactDraft({ referenceSolutionTsx: e.target.value })}
+              />
+            </label>
+          )}
           {mode === 'system' && (
             <label className="text-sm">
               Reference overview (Markdown)
@@ -897,6 +1059,39 @@ const Author = () => {
               />
             </label>
           </div>
+          ) : mode === 'react' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                Common pitfalls (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={reactDraft.metadata.commonPitfalls.join('\n')}
+                  onChange={(e) =>
+                    updateReactDraft({
+                      metadata: {
+                        ...reactDraft.metadata,
+                        commonPitfalls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Recall questions (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={reactDraft.metadata.recallQuestions.join('\n')}
+                  onChange={(e) =>
+                    updateReactDraft({
+                      metadata: {
+                        ...reactDraft.metadata,
+                        recallQuestions: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm">
@@ -1062,6 +1257,40 @@ const Author = () => {
                   ))}
                 </div>
               ))}
+            </div>
+          )}
+          {mode === 'react' && (
+            <div className="glass rounded-2xl p-5 space-y-4">
+              <h3 className="font-display text-lg">Tests</h3>
+              <label className="text-sm">
+                Visible tests module
+                <textarea
+                  className="mt-2 h-40 w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs font-mono"
+                  value={reactDraft.tests.visible}
+                  onChange={(e) =>
+                    updateReactDraft({
+                      tests: { ...reactDraft.tests, visible: e.target.value }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Hidden tests module
+                <textarea
+                  className="mt-2 h-32 w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs font-mono"
+                  value={reactDraft.tests.hidden}
+                  onChange={(e) =>
+                    updateReactDraft({
+                      tests: { ...reactDraft.tests, hidden: e.target.value }
+                    })
+                  }
+                />
+              </label>
+              <p className="text-xs text-mist-300">
+                Tests should export <code>tests</code> as an array of objects with <code>name</code> and <code>run</code>.
+                Use <code>import {'{ render, screen, fireEvent }'} from '@testing-library/react'</code> and
+                <code>import {'{ YourComponent }'} from 'user'</code>.
+              </p>
             </div>
           )}
 

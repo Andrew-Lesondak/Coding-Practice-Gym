@@ -2,13 +2,15 @@ import { problems } from '../data/problems';
 import { dsaDrills } from '../data/dsaDrills';
 import { systemDesignPrompts } from '../data/systemDesignPrompts';
 import { systemDesignDrills } from '../data/systemDesignDrills';
+import { reactCodingProblems } from '../data/reactCodingProblems';
 import { AdaptiveBlock, AdaptiveSessionPlan } from '../types/adaptive';
 import { ProgressState } from '../types/progress';
 import {
   buildDSAProblemStats,
   buildDSASpeedDrillStats,
   buildSystemDesignDrillStats,
-  buildMockInterviewStats
+  buildMockInterviewStats,
+  buildReactCodingStats
 } from './analytics/engine';
 import { DSASpeedDrillStats, DSAProblemStats, SystemDesignDrillStats } from './analytics/types';
 import { loadDrillAttempts } from './dsaDrillStorage';
@@ -39,12 +41,15 @@ type CandidatePools = {
   dueDSA: Candidate[];
   dueSD: Candidate[];
   dueSDDrills: Candidate[];
+  dueReact: Candidate[];
   dsaWeaknessCandidates: Candidate[];
   dsaDrillCandidates: Candidate[];
   sdDrillCandidates: Candidate[];
   sdPromptCandidates: Candidate[];
+  reactProblemCandidates: Candidate[];
   speedGapPatterns: Set<string>;
   weakestPatterns: string[];
+  weakestReactTopics: string[];
 };
 
 type PlannerInputs = {
@@ -121,6 +126,7 @@ export const buildCandidatePools = (progress: ProgressState): CandidatePools => 
   const drillStats = buildDSASpeedDrillStats();
   const sdDrillStats = buildSystemDesignDrillStats(progress);
   const mockStats = buildMockInterviewStats();
+  const reactStats = buildReactCodingStats(progress);
 
   const speedGapPatterns = new Set<string>();
   const patternAccuracy: Record<string, number[]> = {};
@@ -166,6 +172,19 @@ export const buildCandidatePools = (progress: ProgressState): CandidatePools => 
     return drillAvg >= 0.7 && mockAvg > 0 && mockAvg <= 0.5;
   })();
 
+  const reactTopicAccuracy: Record<string, number[]> = {};
+  reactStats.forEach((stat) => {
+    stat.topics.forEach((topic) => {
+      reactTopicAccuracy[topic] = reactTopicAccuracy[topic] ?? [];
+      reactTopicAccuracy[topic].push(stat.score);
+    });
+  });
+  const weakestReactTopics = Object.entries(reactTopicAccuracy)
+    .map(([topic, scores]) => ({ topic, score: avg(scores) }))
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 3)
+    .map((item) => item.topic);
+
   const dueDSA: Candidate[] = problems
     .filter((problem) => getOverdueDays(progress.problems[problem.id]?.nextReviewAt) > 0)
     .map((problem) => ({
@@ -203,6 +222,20 @@ export const buildCandidatePools = (progress: ProgressState): CandidatePools => 
       overdueDays: getOverdueDays(progress.systemDesignDrills[drill.id]?.nextReviewAt),
       lastAttemptedAt: progress.systemDesignDrills[drill.id]?.lastAttemptedAt,
       difficulty: normalizeDifficulty(drill.difficulty)
+    }));
+
+  const dueReact: Candidate[] = reactCodingProblems
+    .filter((problem) => getOverdueDays(progress.reactCoding[problem.id]?.nextReviewAt) > 0)
+    .map((problem) => ({
+      id: `due-react-${problem.id}`,
+      blockType: 'react_problem' as const,
+      targetId: problem.id,
+      minutes: 10,
+      due: true,
+      overdueDays: getOverdueDays(progress.reactCoding[problem.id]?.nextReviewAt),
+      lastAttemptedAt: progress.reactCoding[problem.id]?.lastAttemptedAt,
+      difficulty: normalizeDifficulty(problem.difficulty),
+      weaknessTag: problem.topics.find((topic) => weakestReactTopics.includes(topic))
     }));
 
   const dsaWeaknessCandidates: Candidate[] = problems
@@ -257,16 +290,32 @@ export const buildCandidatePools = (progress: ProgressState): CandidatePools => 
     lastAttemptedAt: progress.systemDesign[prompt.id]?.lastAttemptedAt
   }));
 
+  const reactProblemCandidates: Candidate[] = reactCodingProblems.map((problem) => ({
+    id: `react-${problem.id}`,
+    blockType: 'react_problem' as const,
+    targetId: problem.id,
+    minutes: 10,
+    difficulty: normalizeDifficulty(problem.difficulty),
+    weaknessTag: problem.topics.find((topic) => weakestReactTopics.includes(topic)) ?? problem.topics[0],
+    lastAttemptedAt: progress.reactCoding[problem.id]?.lastAttemptedAt,
+    score: progress.reactCoding[problem.id]?.attempts
+      ? (progress.reactCoding[problem.id]?.passes ?? 0) / (progress.reactCoding[problem.id]?.attempts ?? 1)
+      : 0
+  }));
+
   return {
     dueDSA,
     dueSD,
     dueSDDrills,
+    dueReact,
     dsaWeaknessCandidates,
     dsaDrillCandidates,
     sdDrillCandidates,
     sdPromptCandidates,
+    reactProblemCandidates,
     speedGapPatterns,
-    weakestPatterns
+    weakestPatterns,
+    weakestReactTopics
   };
 };
 
@@ -373,9 +422,16 @@ const templates: Record<string, Array<Omit<AdaptiveBlock, 'id' | 'title' | 'targ
   ],
   'mixed-60-interview': [
     { blockType: 'dsa_drill', minutes: 8, timed: true, userEditable: true },
-    { blockType: 'dsa_timed_problem', minutes: 12, timed: true, userEditable: true },
+    { blockType: 'react_problem', minutes: 10, timed: true, userEditable: true },
     { blockType: 'sd_drill', minutes: 10, timed: true, userEditable: true },
     { blockType: 'sd_timed_prompt', minutes: 20, timed: true, userEditable: true },
+    { blockType: 'reflection', minutes: 10, timed: false, userEditable: false }
+  ],
+  'mixed-60-chill': [
+    { blockType: 'dsa_review', minutes: 8, timed: false, userEditable: true },
+    { blockType: 'react_problem', minutes: 12, timed: false, userEditable: true },
+    { blockType: 'sd_review', minutes: 12, timed: false, userEditable: true },
+    { blockType: 'sd_drill', minutes: 12, timed: false, userEditable: true },
     { blockType: 'reflection', minutes: 10, timed: false, userEditable: false }
   ]
 };
@@ -393,27 +449,32 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
   const dsaStats = buildDSAProblemStats(progress);
   const drillStats = buildDSASpeedDrillStats();
   const sdDrillStats = buildSystemDesignDrillStats(progress);
+  const reactStats = buildReactCodingStats(progress);
 
   const dominantDSA = determineDSAFailureMode(dsaStats, drillStats);
   const dominantSD = determineSDFailureMode(sdDrillStats);
   let template = fallbackTemplate(mode, lengthMinutes, intensity);
   const hasReview = template.some((block) => block.blockType === 'dsa_review' || block.blockType === 'sd_review');
-  const hasDue = pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length > 0;
+  const hasDue = pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length + pools.dueReact.length > 0;
   if (intensity === 'chill' && hasDue && !hasReview) {
     template = [{ blockType: mode === 'dsa' ? 'dsa_review' : 'sd_review', minutes: 8, timed: false, userEditable: true }, ...template.slice(1)];
   }
 
   const dsaAvg = avg(dsaStats.map((s) => s.score));
   const sdAvg = avg(sdDrillStats.map((s) => s.score));
+  const reactAvg = avg(reactStats.map((s) => s.score));
   const startDSADifficulty: Candidate['difficulty'] = dsaAvg <= 0.5 ? 'easy' : 'medium';
   const startSDDifficulty: Candidate['difficulty'] = sdAvg <= 0.5 ? 'easy' : 'medium';
+  const startReactDifficulty: Candidate['difficulty'] = reactAvg <= 0.5 ? 'easy' : 'medium';
   const includeHardDSA = dsaAvg >= 0.8;
   const includeHardSD = sdAvg >= 0.8;
+  const includeHardReact = reactAvg >= 0.8;
 
   const usedTags: string[] = [];
   let counter = 0;
   let dsaBlockIndex = 0;
   let sdBlockIndex = 0;
+  let reactBlockIndex = 0;
 
   const getExcludeTag = () => {
     if (usedTags.length < 2) return undefined;
@@ -439,6 +500,16 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
       candidate = pickCandidate(pools.dsaWeaknessCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startDSADifficulty : includeHardDSA ? 'hard' : undefined, excludeTag: getExcludeTag() }) ?? pickCandidate(pools.dueDSA, seed + counter, usedTags);
       dsaBlockIndex += 1;
     }
+    if (slot.blockType === 'react_problem') {
+      const isFirst = reactBlockIndex === 0;
+      candidate =
+        pickCandidate(pools.dueReact, seed + counter, usedTags) ??
+        pickCandidate(pools.reactProblemCandidates, seed + counter, usedTags, {
+          preferredDifficulty: isFirst ? startReactDifficulty : includeHardReact ? 'hard' : undefined,
+          excludeTag: getExcludeTag()
+        });
+      reactBlockIndex += 1;
+    }
     if (slot.blockType === 'sd_review') {
       const isFirst = sdBlockIndex === 0;
       candidate = pickCandidate(pools.dueSD, seed + counter, usedTags) ?? pickCandidate(pools.sdPromptCandidates, seed + counter, usedTags, { preferredDifficulty: isFirst ? startSDDifficulty : undefined, excludeTag: getExcludeTag() });
@@ -458,7 +529,12 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
       candidate = {
         id: `fallback-${slot.blockType}`,
         blockType: slot.blockType,
-        targetId: mode === 'system-design' ? systemDesignPrompts[0]?.id ?? 'sd' : problems[0]?.id ?? 'dsa',
+        targetId:
+          slot.blockType === 'react_problem'
+            ? reactCodingProblems[0]?.id ?? 'react'
+            : mode === 'system-design'
+            ? systemDesignPrompts[0]?.id ?? 'sd'
+            : problems[0]?.id ?? 'dsa',
         minutes: slot.minutes
       };
     }
@@ -468,6 +544,10 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
     const title = (() => {
       if (slot.blockType.startsWith('dsa')) {
         const problem = problems.find((p) => p.id === candidate.targetId);
+        return problem?.title ?? candidate.targetId;
+      }
+      if (slot.blockType === 'react_problem') {
+        const problem = reactCodingProblems.find((p) => p.id === candidate.targetId);
         return problem?.title ?? candidate.targetId;
       }
       if (slot.blockType.startsWith('sd')) {
@@ -501,7 +581,7 @@ export const generateAdaptivePlan = (inputs: PlannerInputs): AdaptiveSessionPlan
 
   const summary = {
     primaryFocus: [mode === 'dsa' ? dominantDSA : dominantSD],
-    dueReviewCount: pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length,
+    dueReviewCount: pools.dueDSA.length + pools.dueSD.length + pools.dueSDDrills.length + pools.dueReact.length,
     estimatedTotalMinutes: blocks.reduce((acc, block) => acc + block.minutes, 0)
   };
 
@@ -527,6 +607,7 @@ export const getReplacementCandidates = (
   if (blockType === 'dsa_review') candidates.push(...pools.dueDSA, ...pools.dsaWeaknessCandidates);
   if (blockType === 'dsa_drill') candidates.push(...pools.dsaDrillCandidates);
   if (blockType === 'dsa_timed_problem') candidates.push(...pools.dsaWeaknessCandidates);
+  if (blockType === 'react_problem') candidates.push(...pools.dueReact, ...pools.reactProblemCandidates);
   if (blockType === 'sd_review') candidates.push(...pools.dueSD);
   if (blockType === 'sd_drill') candidates.push(...pools.sdDrillCandidates);
   if (blockType === 'sd_timed_prompt') candidates.push(...pools.sdPromptCandidates);

@@ -118,7 +118,7 @@ const buildStepHints = (steps: ReturnType<typeof parseSteps>, stepChecks: Proble
     const stepIndex = Number(key);
     const [primary, secondary] = checks;
     const stepTitle = steps.find((step) => step.index === stepIndex)?.title ?? `Step ${stepIndex}`;
-    const level1 = stepTitle;
+    const level1 = primary?.message ?? stepTitle;
     const level2 = primary?.message ?? 'Focus on the next invariant update.';
     const level3Parts: string[] = [];
     if (primary?.message) level3Parts.push(primary.message);

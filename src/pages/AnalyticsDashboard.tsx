@@ -5,6 +5,7 @@ import {
   buildSystemDesignDrillStats,
   buildMockInterviewStats,
   buildQuizStats,
+  buildReactCodingStats,
   generateInsights
 } from '../lib/analytics/engine';
 
@@ -15,6 +16,7 @@ const AnalyticsDashboard = () => {
   const sdDrillStats = buildSystemDesignDrillStats(progress);
   const mockStats = buildMockInterviewStats();
   const quizStats = buildQuizStats(progress);
+  const reactStats = buildReactCodingStats(progress);
   const insights = generateInsights(dsaStats, drillStats, sdDrillStats, mockStats);
 
   const patterns = Array.from(new Set(dsaStats.flatMap((s) => s.patterns)));
@@ -53,6 +55,17 @@ const AnalyticsDashboard = () => {
     entry.total += stat.attempts;
     entry.correct += stat.correctCount;
     quizBySubtopic[stat.subtopic] = entry;
+  });
+
+  const reactTopicStats: Record<string, { attempts: number; passes: number; times: number[] }> = {};
+  reactStats.forEach((stat) => {
+    stat.topics.forEach((topic) => {
+      const entry = reactTopicStats[topic] ?? { attempts: 0, passes: 0, times: [] };
+      entry.attempts += stat.attempts;
+      entry.passes += stat.passes;
+      if (stat.timeToPassSeconds !== undefined) entry.times.push(stat.timeToPassSeconds);
+      reactTopicStats[topic] = entry;
+    });
   });
 
   return (
@@ -133,6 +146,29 @@ const AnalyticsDashboard = () => {
                 <span>{Math.round((stats.correct / stats.total) * 100)}%</span>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="glass rounded-2xl p-6">
+        <h2 className="font-display text-lg">React Coding Topic Accuracy</h2>
+        {Object.keys(reactTopicStats).length === 0 ? (
+          <p className="mt-3 text-sm text-mist-300">Not enough React coding data yet.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 text-xs text-mist-200">
+            {Object.entries(reactTopicStats).map(([topic, stats]) => {
+              const accuracy = stats.attempts ? stats.passes / stats.attempts : 0;
+              const avgTime = stats.times.length
+                ? Math.round(stats.times.reduce((a, b) => a + b, 0) / stats.times.length)
+                : null;
+              return (
+                <div key={topic} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
+                  <span>{topic}</span>
+                  <span>{Math.round(accuracy * 100)}%</span>
+                  <span>{avgTime !== null ? `${avgTime}s avg` : 'n/a'}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

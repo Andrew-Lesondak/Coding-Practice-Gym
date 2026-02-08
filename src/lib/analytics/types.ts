@@ -49,6 +49,18 @@ export type QuizStats = {
   lastAnsweredAt?: string;
 };
 
+export type ReactCodingStats = {
+  problemId: string;
+  topics: string[];
+  attempts: number;
+  passes: number;
+  score: number;
+  lastAttemptedAt?: string;
+  lastPassedAt?: string;
+  timeToPassSeconds?: number;
+  confidence?: number;
+};
+
 export type Insight = {
   id: string;
   title: string;

@@ -66,6 +66,29 @@ Quizzes are rapid-fire, objective questions with immediate feedback and spaced r
 - Supports true/false, single choice, and multiple choice.
 - Sessions prioritize due questions, then weak subtopics, then new questions.
 
+## React Coding Gym
+
+React Coding Gym provides guided, test-driven React component challenges with the same stepper + retention loop as DSA.
+
+- Routes: `/react`, `/react/catalog`, `/react/:id`
+- Guided stubs in TSX with strict `Step` headers + `TODO(step n start/end)` markers
+- Tests run in-browser using a lightweight runner (no backend)
+
+### React test runner (browser)
+
+React coding problems are executed on the main thread with a lightweight harness:
+
+- TSX is transpiled in-browser using `sucrase`
+- User exports are injected into a test module
+- Tests use `@testing-library/react` helpers and `expect`
+- DOM is cleaned between tests
+- Per-test timeout: 1500ms
+
+Limitations:
+- No Node-only APIs (filesystem, network)
+- `window/document` access is blocked in user modules (tests still run in a DOM)
+- No async test utilities beyond basic promises
+
 ## Adaptive Interview Paths
 
 Adaptive Interview Paths generate deterministic, explainable session plans that mix reviews, drills, and timed blocks based on spaced repetition due items, weaknesses, speed gaps, transfer gaps, and confidence calibration.
@@ -176,6 +199,7 @@ Visit `/author` in dev mode to draft a new problem in the browser. The authoring
 
 Switch the authoring mode to “System Design” to draft a system design prompt and rubric. Validation checks step markers and rubric weights before saving.
 Switch to “Quizzes” to draft quiz questions and validate choices/correct answers.
+Switch to “React Coding” to draft React component problems and validate stubs/tests.
 
 ### Stub marker format
 
@@ -195,6 +219,7 @@ Overlay problems are merged with the built-in pack at runtime. If an overlay pro
 Overlay packs also support system design prompts via the `systemDesignPrompts` array. The merge rule is the same: overlay prompts replace built-ins with matching `id`.
 
 Overlay packs also support quiz questions via the `quizQuestions` array.
+Overlay packs also support React coding problems via the `reactCodingProblems` array.
 
 ## Roadmap (v2 ideas)
 

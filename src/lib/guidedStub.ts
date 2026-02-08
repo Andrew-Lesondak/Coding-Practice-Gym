@@ -131,7 +131,7 @@ export const computeStepCompletion = (
     const anyStarted = childStatuses.some((status) => status !== 'not_started');
     const baseStatus = completion[index] ?? 'not_started';
     if (allCompleted) {
-      completion[index] = 'completed';
+      completion[index] = baseStatus === 'completed' ? 'completed' : 'in_progress';
     } else if (anyStarted || baseStatus !== 'not_started') {
       completion[index] = 'in_progress';
     } else {

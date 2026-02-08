@@ -1,4 +1,4 @@
-export type ErrorType = 'SYNTAX_ERROR' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'HARNESS_ERROR';
+export type ErrorType = 'SYNTAX_ERROR' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'HARNESS_ERROR' | 'TEST_FAILURE';
 
 type AnyRecord = Record<string, unknown>;
 

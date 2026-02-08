@@ -8,8 +8,7 @@ describe('drill timer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useAppStore.setState({
-      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {},
-      quizzes: {} },
+      progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {}, reactCoding: {} },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false },
       overlayVersion: 0
     } as any);

@@ -19,6 +19,7 @@ export type AdaptiveBlock = {
     | 'dsa_review'
     | 'dsa_drill'
     | 'dsa_timed_problem'
+    | 'react_problem'
     | 'sd_review'
     | 'sd_drill'
     | 'sd_timed_prompt'
