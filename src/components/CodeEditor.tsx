@@ -13,12 +13,16 @@ const CodeEditor = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
   const onChangeRef = useRef(onChange);
+  const monacoRef = useRef<any>(null);
   const [copied, setCopied] = useState(false);
   const editorFocusedRef = useRef(false);
   const latestValueRef = useRef(value);
   const hasMountedRef = useRef(false);
   const hasModelValueRef = useRef(false);
   const lastEmittedRef = useRef<string | null>(null);
+  const modelIdRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `model-${Date.now()}`
+  );
 
   useEffect(() => {
     latestValueRef.current = value;
@@ -27,6 +31,15 @@ const CodeEditor = ({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    const model = editor?.getModel?.();
+    if (editor && model && monaco) {
+      monaco.editor.setModelLanguage(model, language);
+    }
+  }, [language]);
   useEffect(() => {
     if (!containerRef.current || !editorRef.current) return;
     let frame: number | null = null;
@@ -142,11 +155,75 @@ const CodeEditor = ({
             value={value}
             theme="vs-dark"
             language={language}
+            path={`inmemory://model/${modelIdRef.current}.${language === 'typescript' ? 'ts' : 'js'}`}
+            beforeMount={(monaco) => {
+              monacoRef.current = monaco;
+              const reactTypes = `
+                declare namespace React {
+                  type FC<P = any> = (props: P) => any;
+                  const createElement: any;
+                  const Fragment: any;
+                }
+                declare module "react" {
+                  export = React;
+                  export const Fragment: any;
+                  export const useState: any;
+                  export const useEffect: any;
+                  export const useMemo: any;
+                  export const useCallback: any;
+                  export const useRef: any;
+                  export const useReducer: any;
+                  export const createContext: any;
+                  export const useContext: any;
+                }
+                declare module "react/jsx-runtime" {
+                  export const jsx: any;
+                  export const jsxs: any;
+                  export const Fragment: any;
+                }
+                declare module "react-dom/client" {
+                  export const createRoot: any;
+                }
+              `;
+              monaco.languages.typescript.typescriptDefaults.addExtraLib(
+                reactTypes,
+                'file:///react-shim.d.ts'
+              );
+              monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+                jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+                target: monaco.languages.typescript.ScriptTarget.ES2020,
+                module: monaco.languages.typescript.ModuleKind.ESNext,
+                moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+                esModuleInterop: true,
+                allowSyntheticDefaultImports: true,
+                noUnusedLocals: false,
+                noUnusedParameters: false,
+                allowNonTsExtensions: true,
+                allowJs: true,
+                isolatedModules: true
+              });
+              monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+                target: monaco.languages.typescript.ScriptTarget.ES2020,
+                module: monaco.languages.typescript.ModuleKind.ESNext,
+                moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+                allowNonTsExtensions: true,
+                allowJs: true,
+                checkJs: false
+              });
+              monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+                noSemanticValidation: true,
+                noSyntaxValidation: true
+              });
+            }}
           onChange={(val) => onChange(val ?? '')}
-          onMount={(editor) => {
+          onMount={(editor, monaco) => {
             editorRef.current = editor;
             hasMountedRef.current = true;
             editor.layout();
+            const model = editor.getModel();
+            if (model) {
+              monaco.editor.setModelLanguage(model, language);
+            }
             editor.onDidFocusEditorText(() => {
               editorFocusedRef.current = true;
             });

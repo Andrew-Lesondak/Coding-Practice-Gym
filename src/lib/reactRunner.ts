@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, cleanup, screen, fireEvent, act } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent, act, within } from '@testing-library/react';
 import { transform } from 'sucrase';
 import { ErrorType, classifyError } from './runnerUtils';
 
@@ -102,10 +102,12 @@ const compileToCjs = (code: string) => {
   }).code;
 };
 
-const createRequire = (userExports: Record<string, any>) => {
+const createRequire = (userExports: Record<string, any>, screenProxy: any, renderProxy: any) => {
   return (name: string) => {
     if (name === 'react') return React;
-    if (name === '@testing-library/react') return { render, screen, fireEvent, act, cleanup };
+    if (name === '@testing-library/react') {
+      return { render: renderProxy, screen: screenProxy, fireEvent, act, cleanup };
+    }
     if (name === 'user') return userExports;
     throw new Error(`Unknown module: ${name}`);
   };
@@ -120,11 +122,12 @@ type SandboxGlobals = {
   XMLHttpRequest?: typeof XMLHttpRequest | undefined;
   WebSocket?: typeof WebSocket | undefined;
   expect?: ReturnType<typeof createExpect> | undefined;
+  require?: (name: string) => any;
 };
 
 const evalCjsModule = (code: string, userExports: Record<string, any>, globals: SandboxGlobals = {}) => {
   const module = { exports: {} as any };
-  const require = createRequire(userExports);
+  const require = globals.require ?? createRequire(userExports, screen, render);
   const fn = new Function(
     'require',
     'module',
@@ -179,6 +182,15 @@ export const runReactTests = async ({
     new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms));
 
   try {
+    let activeScreen: any = screen;
+    let activeRender: any = render;
+    const screenProxy = new Proxy(
+      {},
+      {
+        get: (_target, prop) => (activeScreen as any)[prop]
+      }
+    );
+    const renderProxy = (...args: any[]) => activeRender(...args);
     const userJs = compileToCjs(userCode);
     const userExports = evalCjsModule(userJs, {}, {
       window: undefined,
@@ -199,7 +211,8 @@ export const runReactTests = async ({
       fetch: undefined,
       XMLHttpRequest: undefined,
       WebSocket: undefined,
-      expect
+      expect,
+      require: createRequire(userExports, screenProxy, renderProxy)
     });
 
     const tests: TestCase[] = testExports.tests ?? [];
@@ -209,7 +222,14 @@ export const runReactTests = async ({
     let timeoutHit = false;
     for (const test of tests) {
       cleanup();
-      const ctx = { React, render, screen, fireEvent, act, expect };
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const localRender = (ui: React.ReactElement, options?: Parameters<typeof render>[1]) =>
+        render(ui, { container, baseElement: container, ...options });
+      const scopedScreen = within(container);
+      activeScreen = scopedScreen;
+      activeRender = localRender;
+      const ctx = { React, render: localRender, screen: scopedScreen, fireEvent, act, expect };
       try {
         await Promise.race([Promise.resolve(test.run(ctx)), timeout(timeoutMs)]);
         results.push({ name: test.name, passed: true });
@@ -217,6 +237,9 @@ export const runReactTests = async ({
         const message = (err as Error).message;
         if (message === 'Timeout') timeoutHit = true;
         results.push({ name: test.name, passed: false, error: message });
+      } finally {
+        cleanup();
+        container.remove();
       }
     }
 
