@@ -12,20 +12,85 @@ const CodeEditor = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
+  const onChangeRef = useRef(onChange);
   const [copied, setCopied] = useState(false);
   const editorFocusedRef = useRef(false);
+  const latestValueRef = useRef(value);
+  const hasMountedRef = useRef(false);
+  const hasModelValueRef = useRef(false);
+  const lastEmittedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    latestValueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  useEffect(() => {
     if (!containerRef.current || !editorRef.current) return;
+    let frame: number | null = null;
+    let lastWidth = 0;
+    let lastHeight = 0;
     const observer = new ResizeObserver(() => {
-      editorRef.current?.layout();
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        if (!containerRef.current) return;
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        if (width === lastWidth && height === lastHeight) return;
+        lastWidth = width;
+        lastHeight = height;
+        editorRef.current?.layout();
+      });
     });
     observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
-    return () => {};
+    const flushLatest = () => {
+      if (!hasMountedRef.current) return;
+      const editor = editorRef.current;
+      const model = editor?.getModel?.();
+      const modelValue = model ? model.getValue() : '';
+      const nextValue =
+        modelValue.trim() === '' && latestValueRef.current.trim() !== '' ? latestValueRef.current : modelValue || latestValueRef.current;
+      if (nextValue !== latestValueRef.current) {
+        latestValueRef.current = nextValue;
+      }
+      if (!hasModelValueRef.current && latestValueRef.current.trim() === '') {
+        return;
+      }
+      if (lastEmittedRef.current === latestValueRef.current) return;
+      lastEmittedRef.current = latestValueRef.current;
+      onChangeRef.current(latestValueRef.current);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        flushLatest();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      flushLatest();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      flushLatest();
+    };
   }, []);
 
   return (
@@ -80,12 +145,30 @@ const CodeEditor = ({
           onChange={(val) => onChange(val ?? '')}
           onMount={(editor) => {
             editorRef.current = editor;
+            hasMountedRef.current = true;
             editor.layout();
             editor.onDidFocusEditorText(() => {
               editorFocusedRef.current = true;
             });
             editor.onDidBlurEditorText(() => {
               editorFocusedRef.current = false;
+              const model = editor.getModel();
+              if (model) {
+                const nextValue = model.getValue();
+                latestValueRef.current = nextValue;
+                hasModelValueRef.current = true;
+                if (lastEmittedRef.current !== nextValue) {
+                  lastEmittedRef.current = nextValue;
+                  onChangeRef.current(nextValue);
+                }
+              }
+            });
+            editor.onDidChangeModelContent(() => {
+              const model = editor.getModel();
+              if (model) {
+                latestValueRef.current = model.getValue();
+                hasModelValueRef.current = true;
+              }
             });
             const dom = editor.getDomNode();
             if (dom) {
@@ -111,7 +194,8 @@ const CodeEditor = ({
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               padding: { top: 16, bottom: 16 },
-              wordWrap: 'on'
+              wordWrap: 'on',
+              fixedOverflowWidgets: true
             }}
             height="100%"
             width="100%"

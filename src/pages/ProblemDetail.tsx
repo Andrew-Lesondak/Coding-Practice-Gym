@@ -492,7 +492,7 @@ const ProblemDetail = () => {
       )}
 
       {activeTab === 'solve' && (
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
+        <section className="grid gap-6 lg:grid-cols-[1.4fr_0.7fr]">
           <div className="space-y-4">
             {isDueForReview && problemProgress.explanation && (
               <div className="rounded-2xl border border-ember-500/30 bg-ember-500/10 p-4 text-sm text-mist-200">
@@ -553,21 +553,36 @@ const ProblemDetail = () => {
               {runResult && (
                 <div
                   className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
-                    runResult.ok ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/40 text-amber-200'
+                    runResult.ok ? 'border-emerald-400/40 text-emerald-200' : 'border-rose-400/40 text-rose-200'
                   }`}
                 >
+                  {(() => {
+                    const passedCount = runResult.results.filter((item) => item.passed).length;
+                    const failedCount = runResult.results.length - passedCount;
+                    const totalCount = runResult.results.length;
+                    return (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="uppercase tracking-[0.2em]">
                       {lastRunMode === 'submit' ? 'Submit' : 'Run'}
                     </span>
                     <span className="text-mist-300">·</span>
+                    <span
+                      className={`uppercase tracking-[0.15em] ${
+                        runResult.ok ? 'text-emerald-200' : 'text-rose-200'
+                      }`}
+                    >
+                      {runResult.ok ? 'Passed' : 'Failed'}
+                    </span>
+                    <span className="text-mist-300">·</span>
                     <span>
-                      {runResult.ok ? 'Passed' : 'Failed'} {runResult.results.length}/{runResult.results.length} tests
+                      Passed {passedCount}/{totalCount} · Failed {failedCount}/{totalCount}
                     </span>
                     {lastRunMode === 'submit' && (
                       <span className="text-mist-300">includes hidden tests</span>
                     )}
                   </div>
+                    );
+                  })()}
                   {runResult.error && (
                     <p className="mt-1 text-xs text-mist-300">
                       {runResult.errorType ?? 'Error'}: {runResult.error}

@@ -804,6 +804,74 @@ const jsQuestions: QuizQuestion[] = [
     ['a', 'b', 'c'],
     'Prototype chain is shared, not copied per instance.',
     ['prototypes']
+  ),
+  tf(
+    'js-tf-16',
+    'javascript',
+    'async',
+    'medium',
+    'Awaiting a non-promise value yields that value (as a resolved promise).',
+    true,
+    'await wraps non-promises in a resolved promise.',
+    ['async']
+  ),
+  tf(
+    'js-tf-17',
+    'javascript',
+    'arrays',
+    'medium',
+    'Array.prototype.sort() sorts numbers correctly without a comparator.',
+    false,
+    'Default sort is lexicographic; numbers need a comparator.',
+    ['arrays']
+  ),
+  sc(
+    'js-sc-23',
+    'javascript',
+    'event-loop',
+    'medium',
+    'What is the output?\n\n```js\nconsole.log("a");\nsetTimeout(() => console.log("b"), 0);\nconsole.log("c");\n```',
+    [
+      { id: 'a', text: 'a b c' },
+      { id: 'b', text: 'a c b' },
+      { id: 'c', text: 'b a c' },
+      { id: 'd', text: 'c a b' }
+    ],
+    'b',
+    'Synchronous logs run first; timers run later.',
+    ['event-loop']
+  ),
+  sc(
+    'js-sc-24',
+    'javascript',
+    'objects',
+    'easy',
+    'Which method returns an array of [key, value] pairs?',
+    [
+      { id: 'a', text: 'Object.entries' },
+      { id: 'b', text: 'Object.keys' },
+      { id: 'c', text: 'Object.values' },
+      { id: 'd', text: 'Object.pairs' }
+    ],
+    'a',
+    'Object.entries returns [key, value] pairs.',
+    ['objects']
+  ),
+  mc(
+    'js-mc-24',
+    'javascript',
+    'promises',
+    'medium',
+    'Which expressions create a Promise?',
+    [
+      { id: 'a', text: 'new Promise(resolve => resolve())' },
+      { id: 'b', text: 'Promise.resolve(5)' },
+      { id: 'c', text: 'setTimeout(() => {}, 0)' },
+      { id: 'd', text: 'Promise.all([])' }
+    ],
+    ['a', 'b', 'd'],
+    'Promise constructors and Promise helpers return Promises; setTimeout does not.',
+    ['promises']
   )
 ];
 
@@ -1544,6 +1612,74 @@ const reactQuestions: QuizQuestion[] = [
     ['a', 'c', 'd'],
     'Different types cause remount; keys are used primarily in arrays.',
     ['rendering']
+  ),
+  tf(
+    'react-tf-16',
+    'react',
+    'hooks',
+    'easy',
+    'The initializer function passed to useState runs on every render.',
+    false,
+    'It runs only on the initial render.',
+    ['hooks']
+  ),
+  tf(
+    'react-tf-17',
+    'react',
+    'useEffect',
+    'medium',
+    'Returning undefined from useEffect is the same as not providing a cleanup.',
+    true,
+    'No cleanup runs if you return nothing/undefined.',
+    ['useEffect']
+  ),
+  sc(
+    'react-sc-23',
+    'react',
+    'rendering',
+    'easy',
+    'Which JSX attribute should be used for CSS classes?',
+    [
+      { id: 'a', text: 'class' },
+      { id: 'b', text: 'className' },
+      { id: 'c', text: 'css' },
+      { id: 'd', text: 'styleClass' }
+    ],
+    'b',
+    'JSX uses className.',
+    ['rendering']
+  ),
+  sc(
+    'react-sc-24',
+    'react',
+    'rendering',
+    'easy',
+    'Which prop contains elements between a component’s opening and closing tags?',
+    [
+      { id: 'a', text: 'content' },
+      { id: 'b', text: 'children' },
+      { id: 'c', text: 'slot' },
+      { id: 'd', text: 'body' }
+    ],
+    'b',
+    'Children are passed via the children prop.',
+    ['rendering']
+  ),
+  mc(
+    'react-mc-24',
+    'react',
+    'hooks',
+    'medium',
+    'Which hooks accept dependency arrays?',
+    [
+      { id: 'a', text: 'useEffect' },
+      { id: 'b', text: 'useMemo' },
+      { id: 'c', text: 'useCallback' },
+      { id: 'd', text: 'useState' }
+    ],
+    ['a', 'b', 'c'],
+    'useEffect, useMemo, and useCallback accept dependency arrays.',
+    ['hooks']
   )
 ];
 

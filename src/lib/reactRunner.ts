@@ -15,11 +15,11 @@ type TestCase = {
   name: string;
   run: (ctx: {
     React: typeof React;
-    render: typeof render;
+    render: any;
     screen: typeof screen;
     fireEvent: typeof fireEvent;
     act: typeof act;
-    expect: typeof expect;
+    expect: any;
   }) => void | Promise<void>;
 };
 
