@@ -16,7 +16,7 @@ type TestCase = {
   run: (ctx: {
     React: typeof React;
     render: any;
-    screen: typeof screen;
+    screen: any;
     fireEvent: typeof fireEvent;
     act: typeof act;
     expect: any;

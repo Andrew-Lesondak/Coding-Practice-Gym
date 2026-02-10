@@ -7,6 +7,7 @@ import CodeEditor from '../components/CodeEditor';
 import ReactTestResults from '../components/ReactTestResults';
 import { useReactCodingProblems } from '../lib/useReactCodingProblems';
 import { computeStepCompletion, getFirstIncompleteStep, parseSteps, parseTodoRegions } from '../lib/guidedStub';
+import { getReactStepHints } from '../lib/reactStepHints';
 import { runReactTests, ReactRunResult } from '../lib/reactRunner';
 import { useAppStore, getReactCodingProgress } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
@@ -19,6 +20,105 @@ const tabs = [
   { id: 'solve', label: 'Solve' },
   { id: 'review', label: 'Review' }
 ];
+
+const applyHintLevel = (code: string, level: number) => {
+  const lines = code.split('\n');
+  const filteredHints = lines.filter((line) => {
+    const match = line.match(/\/\/\s*HINT\(level\s+(\d+)\):/);
+    if (!match) return true;
+    const hintLevel = Number(match[1]);
+    if (level >= 2) {
+      return hintLevel === level;
+    }
+    return hintLevel <= level;
+  });
+
+  return filteredHints
+    .map((line) => {
+      if (level === 0) {
+        if (/\/\/\s*HINT\(level\s+\d+\):/.test(line)) {
+          return null;
+        }
+        const match = line.match(/^(\s*\/\/\s*Step\s+\d+(?:\.\d+)?)(\s*:\s*.+)?$/);
+        if (match) {
+          return match[1];
+        }
+      }
+      return line;
+    })
+    .filter((line): line is string => line !== null)
+    .join('\n');
+};
+
+const applyHintLevelToStub = (code: string, level: number) => {
+  const lines = code.split('\n');
+  let insideTodo = false;
+  const filtered = lines.filter((line) => {
+    if (/\/\/\s*TODO\(step\s+.*\s+start\)/.test(line)) {
+      insideTodo = true;
+      return true;
+    }
+    if (/\/\/\s*TODO\(step\s+.*\s+end\)/.test(line)) {
+      insideTodo = false;
+      return true;
+    }
+    const hintMatch = line.match(/\/\/\s*HINT\(level\s+(\d+)\):/);
+    if (hintMatch) {
+      const hintLevel = Number(hintMatch[1]);
+      if (level >= 2) {
+        return hintLevel === level;
+      }
+      return hintLevel <= level;
+    }
+    if (insideTodo && level >= 2) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') && !/\/\/\s*Step\s+\d+/.test(trimmed)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  return applyHintLevel(filtered.join('\n'), level);
+};
+
+const stripHintLines = (code: string) => {
+  return code
+    .split('\n')
+    .filter((line) => !/\/\/\s*HINT\(level\s+\d+\):/.test(line))
+    .join('\n');
+};
+
+const updateHintsInCode = (
+  code: string,
+  stepHints: Record<number, { level1: string; level2: string; level3: string }>
+) => {
+  const lines = stripHintLines(code).split('\n');
+  const output: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    output.push(line);
+    const match = line.match(/^(\s*)\/\/\s*TODO\(step\s+(\d+(?:\.\d+)?)\s+start\)/);
+    if (!match) continue;
+    const indent = match[1] ?? '';
+    const stepIndex = Number(match[2]);
+    const hints = stepHints[stepIndex];
+    if (!hints) continue;
+    let hasHint = false;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (/\/\/\s*TODO\(step\s+.*\s+end\)/.test(lines[j])) break;
+      if (/\/\/\s*HINT\(level\s+\d+\):/.test(lines[j])) {
+        hasHint = true;
+        break;
+      }
+    }
+    if (!hasHint) {
+      output.push(`${indent}// HINT(level 2): ${hints.level2}`);
+      output.push(`${indent}// HINT(level 3): ${hints.level3}`);
+    }
+  }
+  return output.join('\n');
+};
 
 const ReactCodingDetail = () => {
   const { id } = useParams();
@@ -43,18 +143,20 @@ const ReactCodingDetail = () => {
   const setStepCompletion = useAppStore((state) => state.setReactCodingStepStatus);
   const saveExplanation = useAppStore((state) => state.saveReactCodingExplanation);
 
-  const steps = useMemo(() => (problem ? parseSteps(problem.guidedStubTsx) : []), [problem]);
-  const stepHints = useMemo(() => {
-    const hints: Record<number, { level1: string; level2: string; level3: string }> = {};
-    steps.forEach((step) => {
-      hints[step.index] = {
-        level1: step.title,
-        level2: step.title,
-        level3: step.title
-      };
-    });
-    return hints;
-  }, [steps]);
+  const rawSteps = useMemo(() => (problem ? parseSteps(problem.guidedStubTsx) : []), [problem]);
+  const stepHints = useMemo(
+    () => (problem ? getReactStepHints(problem.id, rawSteps) : {}),
+    [problem, rawSteps]
+  );
+  const steps = useMemo(
+    () =>
+      rawSteps.map((step) => ({
+        ...step,
+        title: stepHints[step.index]?.level1 ?? step.title,
+        description: stepHints[step.index]?.level1 ?? step.description
+      })),
+    [rawSteps, stepHints]
+  );
   const regionSteps = useMemo(() => {
     if (!problem) return new Set<number>();
     return new Set(parseTodoRegions(problem.guidedStubTsx).map((region) => region.stepIndex));
@@ -65,10 +167,16 @@ const ReactCodingDetail = () => {
     if (!problem) return;
     let active = true;
     const storageKey = `react-gym-code-${problem.id}`;
+    const stubWithHints = applyHintLevelToStub(updateHintsInCode(problem.guidedStubTsx, stepHints), settings.hintLevel);
     getDraft(storageKey).then((savedDraft) => {
       if (!active) return;
       const saved = savedDraft?.value ?? null;
-      const nextCode = saved ?? problem.guidedStubTsx;
+      const isEdited = saved !== null && saved !== problem.guidedStubTsx;
+      const baseCode = saved ?? stubWithHints;
+      const editedWithHints = isEdited && saved ? updateHintsInCode(saved, stepHints) : baseCode;
+      const nextCode = isEdited && saved
+        ? applyHintLevelToStub(editedWithHints, settings.hintLevel)
+        : baseCode;
       setCode(nextCode);
       prevCodeRef.current = nextCode;
       if (!saved) {
@@ -87,7 +195,7 @@ const ReactCodingDetail = () => {
     return () => {
       active = false;
     };
-  }, [problem, problemProgress?.explanation]);
+  }, [problem, problemProgress?.explanation, settings.hintLevel, stepHints]);
 
   useEffect(() => {
     if (!problem) return;
@@ -264,7 +372,7 @@ const ReactCodingDetail = () => {
                   steps={steps}
                   completion={completion}
                   activeStep={activeStep}
-                  showDescription={false}
+                  showDescription={settings.hintLevel > 0}
                   hintLevel={settings.hintLevel}
                   hints={stepHints}
                 />
