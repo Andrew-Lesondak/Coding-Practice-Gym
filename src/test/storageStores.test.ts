@@ -110,7 +110,7 @@ describe('storage stores', () => {
       completedAt: new Date().toISOString(),
       outcomes: []
     });
-    await setDraft('dsa-gym-code-demo-ts', 'const x = 1;');
+    await setDraft('coding-practice-gym-code-demo-ts', 'const x = 1;');
 
     expect((await getProblemProgress('demo'))?.attempts).toBe(1);
     expect((await getSystemDesignProgressEntry('sd'))?.attempts).toBe(1);
@@ -124,7 +124,7 @@ describe('storage stores', () => {
     expect((await getQuizSessions()).length).toBe(1);
     expect((await getAdaptivePlans()).length).toBe(1);
     expect((await getAdaptiveRuns()).length).toBe(1);
-    expect((await getDraft('dsa-gym-code-demo-ts'))?.value).toBe('const x = 1;');
+    expect((await getDraft('coding-practice-gym-code-demo-ts'))?.value).toBe('const x = 1;');
 
     await clearOverlayPack();
     expect(await getOverlayPack()).toBeNull();

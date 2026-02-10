@@ -39,7 +39,7 @@ describe('storage integration', () => {
 
   it('migrates legacy localStorage data on initialization', async () => {
     localStorage.setItem(
-      'dsa-gym-store',
+      'coding-practice-gym-store',
       JSON.stringify({
         state: {
           progress: {

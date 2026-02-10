@@ -26,14 +26,14 @@ const safeParse = <T>(value: string | null): T | null => {
   }
 };
 
-const legacyStoreKey = 'dsa-gym-store';
-const overlayPackKey = 'dsa-gym-overlay-pack';
-const overlayEnabledKey = 'dsa-gym-overlay-enabled';
+const legacyStoreKey = 'coding-practice-gym-store';
+const overlayPackKey = 'coding-practice-gym-overlay-pack';
+const overlayEnabledKey = 'coding-practice-gym-overlay-enabled';
 const drillAttemptsKey = 'dsa-speed-drill-attempts';
-const quizSessionsKey = 'dsa-gym-quiz-sessions';
-const mockSessionsKey = 'dsa-gym-mock-sessions';
-const adaptivePlansKey = 'dsa-gym-adaptive-plans';
-const adaptiveRunsKey = 'dsa-gym-adaptive-runs';
+const quizSessionsKey = 'coding-practice-gym-quiz-sessions';
+const mockSessionsKey = 'coding-practice-gym-mock-sessions';
+const adaptivePlansKey = 'coding-practice-gym-adaptive-plans';
+const adaptiveRunsKey = 'coding-practice-gym-adaptive-runs';
 
 type LegacyPersisted = {
   state?: {
@@ -49,10 +49,10 @@ const collectDrafts = () => {
     const key = localStorage.key(i);
     if (!key) continue;
     if (
-      key.startsWith('dsa-gym-code-') ||
-      key.startsWith('dsa-gym-sd-') ||
-      key.startsWith('dsa-gym-sd-mermaid-') ||
-      key.startsWith('dsa-gym-drill-') ||
+      key.startsWith('coding-practice-gym-code-') ||
+      key.startsWith('coding-practice-gym-sd-') ||
+      key.startsWith('coding-practice-gym-sd-mermaid-') ||
+      key.startsWith('coding-practice-gym-drill-') ||
       key.startsWith('react-gym-code-')
     ) {
       const value = localStorage.getItem(key);

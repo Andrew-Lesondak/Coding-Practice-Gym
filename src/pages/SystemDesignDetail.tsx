@@ -65,8 +65,8 @@ const SystemDesignDetail = () => {
   useEffect(() => {
     if (!prompt) return;
     let active = true;
-    const draftKey = `dsa-gym-sd-${prompt.id}`;
-    const mermaidKey = `dsa-gym-sd-mermaid-${prompt.id}`;
+    const draftKey = `coding-practice-gym-sd-${prompt.id}`;
+    const mermaidKey = `coding-practice-gym-sd-mermaid-${prompt.id}`;
     setContent(prompt.guidedDesignStubMarkdown);
     setMermaidText('');
     getDraft(draftKey).then((draft) => {
@@ -180,14 +180,14 @@ const SystemDesignDetail = () => {
     const base = content || prompt.guidedDesignStubMarkdown;
     const inserted = insertIntoTemplateRegion(base, step, `Decision: ${decisionText}. Tradeoff: __.`);
     setContent(inserted);
-    void setDraft(`dsa-gym-sd-${prompt.id}`, inserted);
+    void setDraft(`coding-practice-gym-sd-${prompt.id}`, inserted);
   };
 
   const handleInsertStarter = (text: string, step: number) => {
     const base = content || prompt.guidedDesignStubMarkdown;
     const inserted = insertIntoTemplateRegion(base, step, text);
     setContent(inserted);
-    void setDraft(`dsa-gym-sd-${prompt.id}`, inserted);
+    void setDraft(`coding-practice-gym-sd-${prompt.id}`, inserted);
   };
 
   return (
@@ -292,7 +292,7 @@ const SystemDesignDetail = () => {
               onChange={(event) => {
                 const next = event.target.value;
                 setContent(next);
-                void setDraft(`dsa-gym-sd-${prompt.id}`, next);
+                void setDraft(`coding-practice-gym-sd-${prompt.id}`, next);
               }}
             />
             <div className="flex gap-2">
@@ -307,11 +307,11 @@ const SystemDesignDetail = () => {
               value={mermaidText}
               onChange={(value) => {
                 setMermaidText(value);
-                void setDraft(`dsa-gym-sd-mermaid-${prompt.id}`, value);
+                void setDraft(`coding-practice-gym-sd-mermaid-${prompt.id}`, value);
               }}
               onInsertSkeleton={() => {
                 setMermaidText(mermaidSkeleton);
-                void setDraft(`dsa-gym-sd-mermaid-${prompt.id}`, mermaidSkeleton);
+                void setDraft(`coding-practice-gym-sd-mermaid-${prompt.id}`, mermaidSkeleton);
               }}
             />
           </div>

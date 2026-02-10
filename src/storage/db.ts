@@ -7,7 +7,7 @@ import { AdaptiveSessionPlan, AdaptiveSessionRun } from '../types/adaptive';
 import { OverlayPack } from '../lib/problemPack';
 import { ReactCodingProgress } from '../types/reactCoding';
 
-export const DB_NAME = 'dsa-gym-db';
+export const DB_NAME = 'coding-practice-gym-db';
 export const DATABASE_VERSION = 2;
 
 export type EditorDraftRecord = {
@@ -27,7 +27,7 @@ export type MetaRecord = {
   value: string;
 };
 
-export interface DsaGymDb extends DBSchema {
+export interface CodingPracticeGymDb extends DBSchema {
   meta: {
     key: string;
     value: MetaRecord;
@@ -86,11 +86,11 @@ export interface DsaGymDb extends DBSchema {
   };
 }
 
-let dbPromise: Promise<IDBPDatabase<DsaGymDb>> | null = null;
+let dbPromise: Promise<IDBPDatabase<CodingPracticeGymDb>> | null = null;
 
 export const openDatabase = () => {
   if (!dbPromise) {
-    dbPromise = openDB<DsaGymDb>(DB_NAME, DATABASE_VERSION, {
+    dbPromise = openDB<CodingPracticeGymDb>(DB_NAME, DATABASE_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
         if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');

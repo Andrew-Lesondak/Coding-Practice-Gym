@@ -41,8 +41,8 @@ export const initializeStorage = async (): Promise<StorageInitStatus> => {
 
   const migrationMeta = await getMeta(MIGRATION_FLAG);
   const hasLegacy =
-    Boolean(localStorage.getItem('dsa-gym-store')) ||
-    Boolean(localStorage.getItem('dsa-gym-overlay-pack')) ||
+    Boolean(localStorage.getItem('coding-practice-gym-store')) ||
+    Boolean(localStorage.getItem('coding-practice-gym-overlay-pack')) ||
     Boolean(localStorage.getItem('dsa-speed-drill-attempts'));
 
   if (!migrationMeta && hasLegacy) {

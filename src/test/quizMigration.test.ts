@@ -5,7 +5,7 @@ import { getSettings } from '../storage/stores/settingsStore';
 describe('indexeddb migration', () => {
   it('migrates legacy progress and settings', async () => {
     localStorage.setItem(
-      'dsa-gym-store',
+      'coding-practice-gym-store',
       JSON.stringify({
         state: {
           progress: {
@@ -21,7 +21,7 @@ describe('indexeddb migration', () => {
         }
       })
     );
-    localStorage.setItem('dsa-gym-overlay-enabled', 'true');
+    localStorage.setItem('coding-practice-gym-overlay-enabled', 'true');
 
     await migrateFromLocalStorage();
     const progress = await getProblemProgress('demo');

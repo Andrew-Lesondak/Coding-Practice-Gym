@@ -40,7 +40,7 @@ const SystemDesignDrillDetail = () => {
   useEffect(() => {
     if (!drill) return;
     let active = true;
-    const draftKey = `dsa-gym-drill-${drill.id}`;
+    const draftKey = `coding-practice-gym-drill-${drill.id}`;
     setContent(drill.starterTemplateMarkdown);
     getDraft(draftKey).then((draft) => {
       if (!active) return;
@@ -134,7 +134,7 @@ const SystemDesignDrillDetail = () => {
     if (!textareaRef.current) return;
     const inserted = insertIntoTemplateRegion(content, stepIndex, '');
     setContent(inserted);
-    void setDraft(`dsa-gym-drill-${drill.id}`, inserted);
+    void setDraft(`coding-practice-gym-drill-${drill.id}`, inserted);
     textareaRef.current.focus();
   };
 
@@ -231,7 +231,7 @@ const SystemDesignDrillDetail = () => {
                 if (ended) return;
                 const next = event.target.value;
                 setContent(next);
-                void setDraft(`dsa-gym-drill-${drill.id}`, next);
+                void setDraft(`coding-practice-gym-drill-${drill.id}`, next);
               }}
               readOnly={ended}
             />

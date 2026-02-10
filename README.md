@@ -1,6 +1,6 @@
-# DSA Gym
+# Coding Practice Gym
 
-A production-ready React + TypeScript app for guided DSA practice. The experience centers on guided completion, spaced repetition, and a fast feedback loop.
+A React + TypeScript based app for guided coding practice. The experience centers on guided completion, spaced repetition, and a fast feedback loop.
 
 ## Learning loop (Explain it back)
 
@@ -134,7 +134,7 @@ If IndexedDB is unavailable, the app shows a warning banner and falls back to a 
 
 To wipe IndexedDB during development:
 
-- Open browser devtools and run: `indexedDB.deleteDatabase('dsa-gym-db')`
+- Open browser devtools and run: `indexedDB.deleteDatabase('coding-practice-gym-db')`
 - Reload the page
 
 Legacy localStorage is left intact and can be re-migrated.

@@ -4,7 +4,7 @@ import { getReactCodingProgressEntry } from '../storage/stores/reactCodingStore'
 describe('indexeddb migration idempotency', () => {
   it('can run multiple times without losing data', async () => {
     localStorage.setItem(
-      'dsa-gym-store',
+      'coding-practice-gym-store',
       JSON.stringify({
         state: {
           progress: {

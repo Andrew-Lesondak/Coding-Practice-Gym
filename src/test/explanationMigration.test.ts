@@ -3,7 +3,7 @@ import { extractLegacyState } from '../storage/migrations/v1_from_localStorage';
 describe('legacy extraction', () => {
   it('pulls progress/settings from localStorage safely', () => {
     localStorage.setItem(
-      'dsa-gym-store',
+      'coding-practice-gym-store',
       JSON.stringify({
         state: {
           progress: {
@@ -19,7 +19,7 @@ describe('legacy extraction', () => {
         }
       })
     );
-    localStorage.setItem('dsa-gym-overlay-enabled', 'true');
+    localStorage.setItem('coding-practice-gym-overlay-enabled', 'true');
 
     const legacy = extractLegacyState();
     expect(legacy.progress?.problems.demo).toBeDefined();

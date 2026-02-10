@@ -75,7 +75,7 @@ const Settings = () => {
       <section className="glass rounded-2xl p-6">
         <h2 className="font-display text-lg">Reset progress</h2>
         <p className="mt-2 text-sm text-mist-200">
-          To fully reset progress, clear your browser local storage for DSA Gym.
+          To fully reset progress, clear your browser local storage for Coding Practice Gym.
         </p>
       </section>
     </div>

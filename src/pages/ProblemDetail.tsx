@@ -244,12 +244,12 @@ const ProblemDetail = () => {
 
   useEffect(() => {
     if (!problem) return;
-    const savedTab = sessionStorage.getItem(`dsa-gym-problem-tab-${problem.id}`);
+    const savedTab = sessionStorage.getItem(`coding-practice-gym-problem-tab-${problem.id}`);
     if (savedTab && tabs.some((tab) => tab.id === savedTab)) {
       setActiveTab(savedTab);
     }
     let active = true;
-    const storageKey = `dsa-gym-code-${problem.id}-${settings.languageMode}`;
+    const storageKey = `coding-practice-gym-code-${problem.id}-${settings.languageMode}`;
     const stubWithHints = getStubForMode(
       problem.guidedStub,
       settings.languageMode,
@@ -298,7 +298,7 @@ const ProblemDetail = () => {
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     if (problem) {
-      sessionStorage.setItem(`dsa-gym-problem-tab-${problem.id}`, tabId);
+      sessionStorage.setItem(`coding-practice-gym-problem-tab-${problem.id}`, tabId);
     }
   };
 
@@ -337,7 +337,7 @@ const ProblemDetail = () => {
     }
     setCode(next);
     prevCodeRef.current = next;
-    void setDraft(`dsa-gym-code-${problem.id}-${settings.languageMode}`, next);
+    void setDraft(`coding-practice-gym-code-${problem.id}-${settings.languageMode}`, next);
   };
 
   const runTests = async (submit: boolean) => {
@@ -410,7 +410,7 @@ const ProblemDetail = () => {
     );
     setCode(resetCode);
     prevCodeRef.current = resetCode;
-    void setDraft(`dsa-gym-code-${problem.id}-${settings.languageMode}`, resetCode);
+    void setDraft(`coding-practice-gym-code-${problem.id}-${settings.languageMode}`, resetCode);
     setRunResult(undefined);
   };
 
