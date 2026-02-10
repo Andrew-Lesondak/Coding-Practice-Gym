@@ -17,11 +17,11 @@ test-results
 
 # Editor directories and files
 .vscode/*
-.yarn/*
-.pnp.cjs
-.pnp.loader.mjs
 !.vscode/extensions.json
 !.vscode/settings.json
+.yarn/unplugged
+.yarn/sdks
+.yarn/build-state.yml
 .idea
 .DS_Store
 *.suo
