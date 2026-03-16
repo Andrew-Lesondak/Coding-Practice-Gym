@@ -89,6 +89,40 @@ Limitations:
 - `window/document` access is blocked in user modules (tests still run in a DOM)
 - No async test utilities beyond basic promises
 
+## React Debugging Gym
+
+React Debugging Gym focuses on repairing existing broken React codebases rather than building from scratch.
+
+- Routes: `/react-debugging`, `/react-debugging/catalog`, `/react-debugging/:id`
+- Challenge format: multi-file mini app, bug report, repro hints, preview, visible tests, hidden tests, and post-submit review
+- Progress integrates with local persistence, spaced repetition, analytics, and overlay packs
+
+### Debugging runner (browser)
+
+The debugging runner executes an in-memory codebase directly in the browser:
+
+- Challenge files are stored as virtual modules (`tsx`, `ts`, `json`, and `css`)
+- `sucrase` transpiles TS/TSX modules to CommonJS in memory
+- Relative imports are resolved against the virtual file graph
+- Preview runs render the entry module into a controlled container and fully reset between runs
+- Visible tests run on demand; submit runs visible + hidden tests
+- Submit also enforces editable vs read-only files and optional `allowedEditablePaths` / `forbiddenPaths`
+
+Structured runner failures are classified as:
+
+- `SYNTAX_ERROR`
+- `RUNTIME_ERROR`
+- `TEST_FAILURE`
+- `TIMEOUT`
+- `MODULE_RESOLUTION_ERROR`
+- `HARNESS_ERROR`
+
+Limitations:
+
+- No network or Node APIs inside challenge code
+- CSS files are injected for preview only; they do not export CSS-module bindings
+- Tests use a lightweight Testing Library-style harness, not Jest/Vitest globals
+
 ## Adaptive Interview Paths
 
 Adaptive Interview Paths generate deterministic, explainable session plans that mix reviews, drills, and timed blocks based on spaced repetition due items, weaknesses, speed gaps, transfer gaps, and confidence calibration.
@@ -227,6 +261,7 @@ Visit `/author` in dev mode to draft a new problem in the browser. The authoring
 Switch the authoring mode to “System Design” to draft a system design prompt and rubric. Validation checks step markers and rubric weights before saving.
 Switch to “Quizzes” to draft quiz questions and validate choices/correct answers.
 Switch to “React Coding” to draft React component problems and validate stubs/tests.
+Switch to “React Debugging” to draft multi-file debugging challenges and validate import resolution, entry files, tests, and a separate fixed reference codebase.
 
 ### Stub marker format
 
@@ -247,6 +282,42 @@ Overlay packs also support system design prompts via the `systemDesignPrompts` a
 
 Overlay packs also support quiz questions via the `quizQuestions` array.
 Overlay packs also support React coding problems via the `reactCodingProblems` array.
+Overlay packs also support React debugging problems via the `reactDebuggingProblems` array.
+
+### Authoring React debugging challenges
+
+React debugging challenges use this runtime shape:
+
+```ts
+{
+  id,
+  title,
+  difficulty,
+  topics,
+  bugTypes,
+  briefMarkdown,
+  codebase: {
+    files: [{ path, language, contents, editable }]
+  },
+  entryFile,
+  tests: { visible, hidden },
+  reproductionHints,
+  maintainabilityNotes,
+  solutionNotes: { rootCauseMarkdown, fixSummaryMarkdown, edgeCasesMarkdown },
+  recallQuestions,
+  metadata: { estimatedMinutes },
+  allowedEditablePaths?, forbiddenPaths?
+}
+```
+
+The authoring UI validates:
+
+- entry file existence
+- relative import resolution inside the authored codebase
+- visible and hidden test modules
+- a separate fixed reference codebase JSON
+
+The simpler reliable authoring path is a separate fixed codebase. The reference files are used only for validation and are not required by the runtime challenge payload.
 
 ## Roadmap (v2 ideas)
 

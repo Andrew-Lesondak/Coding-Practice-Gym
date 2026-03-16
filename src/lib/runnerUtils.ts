@@ -1,4 +1,10 @@
-export type ErrorType = 'SYNTAX_ERROR' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'HARNESS_ERROR' | 'TEST_FAILURE';
+export type ErrorType =
+  | 'SYNTAX_ERROR'
+  | 'RUNTIME_ERROR'
+  | 'TIMEOUT'
+  | 'HARNESS_ERROR'
+  | 'TEST_FAILURE'
+  | 'MODULE_RESOLUTION_ERROR';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -69,5 +75,7 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
 
 export const classifyError = (error: unknown): ErrorType => {
   if (error instanceof SyntaxError) return 'SYNTAX_ERROR';
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Cannot resolve module')) return 'MODULE_RESOLUTION_ERROR';
   return 'RUNTIME_ERROR';
 };

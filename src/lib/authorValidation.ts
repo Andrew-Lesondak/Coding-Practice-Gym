@@ -9,6 +9,8 @@ import { systemDesignPrompts } from '../data/systemDesignPrompts';
 import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { runReactTests } from './reactRunner';
+import { ReactDebuggingProblem } from '../types/reactDebugging';
+import { normalizeDebuggingPath, resolveDebuggingImport, submitReactDebuggingSolution } from './reactDebuggingRunner';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -256,6 +258,55 @@ export const validateReactCodingReference = async (problem: ReactCodingProblem):
     messages.push({ type: 'error', message: result.error ?? 'Reference solution failed tests.' });
   }
   return messages;
+};
+
+export const validateReactDebuggingProblem = (problem: ReactDebuggingProblem): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (!problem.id) messages.push({ type: 'error', message: 'Problem id is required.' });
+  if (!problem.title) messages.push({ type: 'error', message: 'Title is required.' });
+  if (problem.codebase.files.length === 0) messages.push({ type: 'error', message: 'Codebase must include at least one file.' });
+  if (!problem.entryFile) messages.push({ type: 'error', message: 'Entry file is required.' });
+  if (!problem.tests.visible) messages.push({ type: 'error', message: 'Visible tests are required.' });
+  if (!problem.tests.hidden) messages.push({ type: 'warning', message: 'Hidden tests are empty.' });
+
+  const filePaths = new Set(problem.codebase.files.map((file) => normalizeDebuggingPath(file.path)));
+  if (!filePaths.has(normalizeDebuggingPath(problem.entryFile))) {
+    messages.push({ type: 'error', message: 'Entry file must exist in the codebase.' });
+  }
+
+  for (const file of problem.codebase.files) {
+    if ((file.language === 'tsx' || file.language === 'ts') && !file.contents.trim()) {
+      messages.push({ type: 'error', message: `File ${file.path} cannot be empty.` });
+    }
+    if (file.language !== 'tsx' && file.language !== 'ts') continue;
+    const matches = file.contents.matchAll(/from\s+['"]([^'"]+)['"]|require\(['"]([^'"]+)['"]\)/g);
+    for (const match of matches) {
+      const target = match[1] ?? match[2];
+      if (!target?.startsWith('.')) continue;
+      try {
+        resolveDebuggingImport(file.path, target, problem.codebase.files);
+      } catch (error) {
+        messages.push({ type: 'error', message: (error as Error).message });
+      }
+    }
+  }
+
+  return messages;
+};
+
+export const validateReactDebuggingReference = async (
+  problem: ReactDebuggingProblem,
+  fixedFiles: ReactDebuggingProblem['codebase']['files']
+): Promise<ValidationMessage[]> => {
+  const fixedProblem: ReactDebuggingProblem = {
+    ...problem,
+    codebase: { files: fixedFiles }
+  };
+  const result = await submitReactDebuggingSolution({ problem: fixedProblem, edits: {} });
+  if (!result.ok) {
+    return [{ type: 'error', message: result.error ?? 'Reference fixed codebase failed tests.' }];
+  }
+  return [{ type: 'warning', message: 'Reference fixed codebase passed all tests.' }];
 };
 
 export const validateGuidedStubCompile = (stub: string): ValidationMessage[] => {

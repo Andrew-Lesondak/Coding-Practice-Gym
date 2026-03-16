@@ -1,6 +1,7 @@
 import { problems } from '../../data/problems';
 import { quizQuestions } from '../../data/quizzes';
 import { reactCodingProblems } from '../../data/reactCodingProblems';
+import { reactDebuggingProblems } from '../../data/reactDebuggingProblems';
 import { systemDesignDrills } from '../../data/systemDesignDrills';
 import { loadDrillAttempts } from '../dsaDrillStorage';
 import { loadMockSessions } from '../mockInterviewStorage';
@@ -12,7 +13,8 @@ import {
   MockInterviewStats,
   Insight,
   QuizStats,
-  ReactCodingStats
+  ReactCodingStats,
+  ReactDebuggingStats
 } from './types';
 import { ProgressState } from '../../types/progress';
 
@@ -119,6 +121,37 @@ export const buildReactCodingStats = (progress: ProgressState): ReactCodingStats
       lastAttemptedAt: p?.lastAttemptedAt,
       lastPassedAt: p?.lastPassedAt,
       timeToPassSeconds,
+      confidence: p?.lastRating?.confidence
+    };
+  });
+};
+
+export const buildReactDebuggingStats = (progress: ProgressState): ReactDebuggingStats[] => {
+  const entries = progress.reactDebugging ?? {};
+  return reactDebuggingProblems.map((problem) => {
+    const p = entries[problem.id];
+    const attempts = p?.attempts ?? 0;
+    const passes = p?.passes ?? 0;
+    const score = attempts ? passes / attempts : 0;
+    const firstVisiblePassSeconds =
+      p?.startedAt && p?.firstVisiblePassAt
+        ? Math.max(0, Math.round((new Date(p.firstVisiblePassAt).getTime() - new Date(p.startedAt).getTime()) / 1000))
+        : undefined;
+    const totalSolveTimeSeconds =
+      p?.startedAt && p?.lastPassedAt
+        ? Math.max(0, Math.round((new Date(p.lastPassedAt).getTime() - new Date(p.startedAt).getTime()) / 1000))
+        : undefined;
+    return {
+      problemId: problem.id,
+      bugTypes: problem.bugTypes,
+      topics: problem.topics,
+      attempts,
+      passes,
+      score,
+      lastAttemptedAt: p?.lastAttemptedAt,
+      lastPassedAt: p?.lastPassedAt,
+      timeToFirstVisiblePassSeconds: firstVisiblePassSeconds,
+      totalSolveTimeSeconds,
       confidence: p?.lastRating?.confidence
     };
   });

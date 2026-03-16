@@ -25,6 +25,9 @@ import QuizReview from '../pages/QuizReview';
 import ReactCodingDashboard from '../pages/ReactCodingDashboard';
 import ReactCodingCatalog from '../pages/ReactCodingCatalog';
 import ReactCodingDetail from '../pages/ReactCodingDetail';
+import ReactDebuggingDashboard from '../pages/ReactDebuggingDashboard';
+import ReactDebuggingCatalog from '../pages/ReactDebuggingCatalog';
+import ReactDebuggingDetail from '../pages/ReactDebuggingDetail';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 import { initializeStorage, loadAllState, loadLegacyState } from '../storage';
@@ -141,6 +144,9 @@ const App = () => {
         <Route path="/react" element={<ReactCodingDashboard />} />
         <Route path="/react/catalog" element={<ReactCodingCatalog />} />
         <Route path="/react/:id" element={<ReactCodingDetail />} />
+        <Route path="/react-debugging" element={<ReactDebuggingDashboard />} />
+        <Route path="/react-debugging/catalog" element={<ReactDebuggingCatalog />} />
+        <Route path="/react-debugging/:id" element={<ReactDebuggingDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />

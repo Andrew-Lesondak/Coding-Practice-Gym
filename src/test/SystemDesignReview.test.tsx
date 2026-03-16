@@ -34,7 +34,8 @@ describe('SystemDesign review flow', () => {
         },
         systemDesignDrills: {},
         quizzes: {},
-        reactCoding: {}
+        reactCoding: {},
+        reactDebugging: {}
       },
       settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false },
       overlayVersion: 0

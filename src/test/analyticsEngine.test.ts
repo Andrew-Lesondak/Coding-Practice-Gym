@@ -1,4 +1,4 @@
-import { generateInsights } from '../lib/analytics/engine';
+import { buildReactDebuggingStats, generateInsights } from '../lib/analytics/engine';
 
 describe('analytics insights', () => {
   it('flags speed vs accuracy drop', () => {
@@ -19,5 +19,29 @@ describe('analytics insights', () => {
     ];
     const insights = generateInsights(dsaStats as any, [] as any, [] as any, [] as any);
     expect(insights.some((i) => i.id.includes('overconfidence'))).toBe(true);
+  });
+
+  it('builds react debugging timing stats', () => {
+    const stats = buildReactDebuggingStats({
+      problems: {},
+      systemDesign: {},
+      systemDesignDrills: {},
+      quizzes: {},
+      reactCoding: {},
+      reactDebugging: {
+        'react-debug-effect-stale-profile': {
+          attempts: 1,
+          passes: 1,
+          startedAt: '2026-03-16T10:00:00.000Z',
+          firstVisiblePassAt: '2026-03-16T10:01:00.000Z',
+          lastPassedAt: '2026-03-16T10:03:00.000Z',
+          reviewIntervalDays: 2,
+          easeFactor: 2.3,
+          explanationHistory: []
+        }
+      }
+    } as any);
+
+    expect(stats.find((item) => item.problemId === 'react-debug-effect-stale-profile')?.timeToFirstVisiblePassSeconds).toBe(60);
   });
 });

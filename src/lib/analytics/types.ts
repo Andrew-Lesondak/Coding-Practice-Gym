@@ -61,6 +61,20 @@ export type ReactCodingStats = {
   confidence?: number;
 };
 
+export type ReactDebuggingStats = {
+  problemId: string;
+  bugTypes: string[];
+  topics: string[];
+  attempts: number;
+  passes: number;
+  score: number;
+  lastAttemptedAt?: string;
+  lastPassedAt?: string;
+  timeToFirstVisiblePassSeconds?: number;
+  totalSolveTimeSeconds?: number;
+  confidence?: number;
+};
+
 export type Insight = {
   id: string;
   title: string;

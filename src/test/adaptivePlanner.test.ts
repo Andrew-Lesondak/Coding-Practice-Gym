@@ -7,7 +7,8 @@ const emptyProgress: ProgressState = {
   systemDesign: {},
   systemDesignDrills: {},
   quizzes: {},
-  reactCoding: {}
+  reactCoding: {},
+  reactDebugging: {}
 };
 
 describe('adaptivePlanner', () => {

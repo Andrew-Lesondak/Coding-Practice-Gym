@@ -6,6 +6,7 @@ import {
   buildMockInterviewStats,
   buildQuizStats,
   buildReactCodingStats,
+  buildReactDebuggingStats,
   generateInsights
 } from '../lib/analytics/engine';
 
@@ -17,6 +18,7 @@ const AnalyticsDashboard = () => {
   const mockStats = buildMockInterviewStats();
   const quizStats = buildQuizStats(progress);
   const reactStats = buildReactCodingStats(progress);
+  const reactDebuggingStats = buildReactDebuggingStats(progress);
   const insights = generateInsights(dsaStats, drillStats, sdDrillStats, mockStats);
 
   const patterns = Array.from(new Set(dsaStats.flatMap((s) => s.patterns)));
@@ -65,6 +67,17 @@ const AnalyticsDashboard = () => {
       entry.passes += stat.passes;
       if (stat.timeToPassSeconds !== undefined) entry.times.push(stat.timeToPassSeconds);
       reactTopicStats[topic] = entry;
+    });
+  });
+  const debuggingByBugType: Record<string, { attempts: number; passes: number; firstTimes: number[]; totalTimes: number[] }> = {};
+  reactDebuggingStats.forEach((stat) => {
+    stat.bugTypes.forEach((bugType) => {
+      const entry = debuggingByBugType[bugType] ?? { attempts: 0, passes: 0, firstTimes: [], totalTimes: [] };
+      entry.attempts += stat.attempts;
+      entry.passes += stat.passes;
+      if (stat.timeToFirstVisiblePassSeconds !== undefined) entry.firstTimes.push(stat.timeToFirstVisiblePassSeconds);
+      if (stat.totalSolveTimeSeconds !== undefined) entry.totalTimes.push(stat.totalSolveTimeSeconds);
+      debuggingByBugType[bugType] = entry;
     });
   });
 
@@ -166,6 +179,33 @@ const AnalyticsDashboard = () => {
                   <span>{topic}</span>
                   <span>{Math.round(accuracy * 100)}%</span>
                   <span>{avgTime !== null ? `${avgTime}s avg` : 'n/a'}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="glass rounded-2xl p-6">
+        <h2 className="font-display text-lg">React Debugging Bug-Type Stats</h2>
+        {Object.keys(debuggingByBugType).length === 0 ? (
+          <p className="mt-3 text-sm text-mist-300">Not enough React debugging data yet.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 text-xs text-mist-200">
+            {Object.entries(debuggingByBugType).map(([bugType, stats]) => {
+              const passRate = stats.attempts ? Math.round((stats.passes / stats.attempts) * 100) : 0;
+              const avgFirst = stats.firstTimes.length
+                ? Math.round(stats.firstTimes.reduce((a, b) => a + b, 0) / stats.firstTimes.length)
+                : null;
+              const avgTotal = stats.totalTimes.length
+                ? Math.round(stats.totalTimes.reduce((a, b) => a + b, 0) / stats.totalTimes.length)
+                : null;
+              return (
+                <div key={bugType} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
+                  <span>{bugType}</span>
+                  <span>{passRate}% pass rate</span>
+                  <span>{avgFirst !== null ? `${avgFirst}s to visible pass` : 'n/a'}</span>
+                  <span>{avgTotal !== null ? `${avgTotal}s total` : 'n/a'}</span>
                 </div>
               );
             })}

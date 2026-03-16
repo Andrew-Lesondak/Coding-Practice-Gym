@@ -49,7 +49,8 @@ describe('storage integration', () => {
             systemDesign: {},
             systemDesignDrills: {},
             quizzes: {},
-            reactCoding: {}
+            reactCoding: {},
+            reactDebugging: {}
           },
           settings: { languageMode: 'ts', hintLevel: 1, lockSteps: true, overlayEnabled: false }
         }

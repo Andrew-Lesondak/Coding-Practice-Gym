@@ -24,6 +24,9 @@ const Dashboard = () => {
             <Link to="/catalog" className="rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950">
               Start a problem
             </Link>
+            <Link to="/react-debugging" className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200">
+              Debug React
+            </Link>
             <Link to="/catalog" className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200">
               Review catalog
             </Link>

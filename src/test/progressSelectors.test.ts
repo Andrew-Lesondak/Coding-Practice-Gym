@@ -18,7 +18,8 @@ describe('progress selectors', () => {
       systemDesign: {},
       systemDesignDrills: {},
       quizzes: {},
-      reactCoding: {}
+      reactCoding: {},
+      reactDebugging: {}
     };
 
     const stats = getStats(problems, state);
