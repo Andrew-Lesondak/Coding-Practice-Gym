@@ -4,11 +4,15 @@ import Editor from '@monaco-editor/react';
 const CodeEditor = ({
   value,
   language,
-  onChange
+  onChange,
+  path,
+  suppressDiagnostics = false
 }: {
   value: string;
   language: 'typescript' | 'javascript';
   onChange: (value: string) => void;
+  path?: string;
+  suppressDiagnostics?: boolean;
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
@@ -23,6 +27,7 @@ const CodeEditor = ({
   const modelIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `model-${Date.now()}`
   );
+  const modelPath = path ?? `inmemory://model/${modelIdRef.current}.${language === 'typescript' ? 'ts' : 'js'}`;
 
   useEffect(() => {
     latestValueRef.current = value;
@@ -155,7 +160,7 @@ const CodeEditor = ({
             value={value}
             theme="vs-dark"
             language={language}
-            path={`inmemory://model/${modelIdRef.current}.${language === 'typescript' ? 'ts' : 'js'}`}
+            path={modelPath}
             beforeMount={(monaco) => {
               monacoRef.current = monaco;
               const reactTypes = `
@@ -187,7 +192,7 @@ const CodeEditor = ({
               `;
               monaco.languages.typescript.typescriptDefaults.addExtraLib(
                 reactTypes,
-                'file:///react-shim.d.ts'
+                'inmemory://types/react-shim.d.ts'
               );
               monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
                 jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
@@ -267,6 +272,7 @@ const CodeEditor = ({
             }
           }}
             options={{
+              renderValidationDecorations: suppressDiagnostics ? 'off' : 'on',
               fontSize: 14,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,

@@ -12,7 +12,7 @@ describe('ReactDebugging catalog', () => {
 
     fireEvent.change(screen.getByLabelText('bug type'), { target: { value: 'race condition' } });
 
-    expect(screen.getByText('Older Search Results Replace Newer Ones')).toBeInTheDocument();
-    expect(screen.queryByText('Auto Counter Freezes at 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Search Results Show the Wrong Query')).toBeInTheDocument();
+    expect(screen.queryByText('Timer Freezes or Counts Incorrectly')).not.toBeInTheDocument();
   });
 });

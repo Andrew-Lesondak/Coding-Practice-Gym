@@ -29,7 +29,7 @@ describe('analytics insights', () => {
       quizzes: {},
       reactCoding: {},
       reactDebugging: {
-        'react-debug-effect-stale-profile': {
+        'react-debug-profile-switch-refresh': {
           attempts: 1,
           passes: 1,
           startedAt: '2026-03-16T10:00:00.000Z',
@@ -42,6 +42,6 @@ describe('analytics insights', () => {
       }
     } as any);
 
-    expect(stats.find((item) => item.problemId === 'react-debug-effect-stale-profile')?.timeToFirstVisiblePassSeconds).toBe(60);
+    expect(stats.find((item) => item.problemId === 'react-debug-profile-switch-refresh')?.timeToFirstVisiblePassSeconds).toBe(60);
   });
 });

@@ -47,6 +47,11 @@ const ReactDebuggingDetail = () => {
   useEffect(() => {
     if (!problem) return;
     let active = true;
+    const baseline = Object.fromEntries(fileList.map((file) => [file.path, file.contents]));
+    setFiles(baseline);
+    setActiveFile(fileList[0]?.path ?? '');
+    setPreviewResult(undefined);
+    setTestResult(undefined);
     const load = async () => {
       const next: Record<string, string> = {};
       for (const file of fileList) {
@@ -56,7 +61,6 @@ const ReactDebuggingDetail = () => {
       }
       if (!active) return;
       setFiles(next);
-      setActiveFile(fileList[0]?.path ?? '');
     };
     void load();
     if (entry?.explanation) {
@@ -80,7 +84,12 @@ const ReactDebuggingDetail = () => {
   }
 
   const activeFileMeta = fileList.find((file) => file.path === activeFile) ?? fileList[0];
-  const editMap = files;
+  const currentFiles = Object.fromEntries(fileList.map((file) => [file.path, files[file.path] ?? file.contents]));
+  const changedEdits = Object.fromEntries(
+    fileList
+      .filter((file) => (files[file.path] ?? file.contents) !== file.contents)
+      .map((file) => [file.path, files[file.path] ?? file.contents])
+  );
   const searchPaths = search.trim() ? new Set(filteredFiles.map((item) => item.path)) : null;
   const visibleFiles = searchPaths ? fileList.filter((file) => searchPaths.has(file.path)) : fileList;
 
@@ -95,7 +104,7 @@ const ReactDebuggingDetail = () => {
     setIsRunning(true);
     const result = await runReactDebuggingPreview({
       problem,
-      edits: editMap,
+      edits: changedEdits,
       container: previewHostRef.current
     });
     previewDisposeRef.current = result.dispose;
@@ -112,8 +121,8 @@ const ReactDebuggingDetail = () => {
       startedAt: entry.startedAt ?? now
     });
     const result = submit
-      ? await submitReactDebuggingSolution({ problem, edits: editMap })
-      : await runReactDebuggingTests({ problem, edits: editMap, testCode: problem.tests.visible });
+      ? await submitReactDebuggingSolution({ problem, edits: changedEdits })
+      : await runReactDebuggingTests({ problem, edits: changedEdits, testCode: problem.tests.visible });
     setTestResult(result);
     setIsRunning(false);
     if (!submit && result.ok && !entry.firstVisiblePassAt) {
@@ -194,8 +203,11 @@ const ReactDebuggingDetail = () => {
                   <span>{activeFileMeta.editable ? 'Editable' : 'Read-only'}</span>
                 </div>
                 <CodeEditor
-                  value={editMap[activeFileMeta.path] ?? activeFileMeta.contents}
+                  key={`${problem.id}:${activeFileMeta.path}:codebase`}
+                  value={currentFiles[activeFileMeta.path] ?? activeFileMeta.contents}
                   language="typescript"
+                  path={`inmemory://debug${activeFileMeta.path}`}
+                  suppressDiagnostics
                   onChange={(value) => {
                     if (!activeFileMeta.editable) return;
                     setFiles((current) => ({ ...current, [activeFileMeta.path]: value }));
@@ -218,7 +230,7 @@ const ReactDebuggingDetail = () => {
       )}
 
       {activeTab === 'run' && (
-        <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <section className="grid gap-6 lg:grid-cols-[220px_minmax(0,1.35fr)_minmax(360px,0.95fr)]">
           <div className="glass rounded-2xl p-4 space-y-3">
             <div className="max-h-[420px] space-y-2 overflow-auto">
               {fileList.map((file) => (
@@ -227,16 +239,27 @@ const ReactDebuggingDetail = () => {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="glass rounded-2xl p-4">
             {activeFileMeta && (
-              <CodeEditor
-                value={editMap[activeFileMeta.path] ?? activeFileMeta.contents}
-                language="typescript"
-                onChange={(value) => {
-                  if (!activeFileMeta.editable) return;
-                  setFiles((current) => ({ ...current, [activeFileMeta.path]: value }));
-                  persistFile(activeFileMeta.path, value);
-                }}
-              />
+              <>
+                <div className="mb-3 flex items-center justify-between text-xs text-mist-300">
+                  <span>{activeFileMeta.path}</span>
+                  <span>{activeFileMeta.editable ? 'Editable' : 'Read-only'}</span>
+                </div>
+                <CodeEditor
+                  key={`${problem.id}:${activeFileMeta.path}:run`}
+                  value={currentFiles[activeFileMeta.path] ?? activeFileMeta.contents}
+                  language="typescript"
+                  path={`inmemory://debug${activeFileMeta.path}`}
+                  suppressDiagnostics
+                  onChange={(value) => {
+                    if (!activeFileMeta.editable) return;
+                    setFiles((current) => ({ ...current, [activeFileMeta.path]: value }));
+                    persistFile(activeFileMeta.path, value);
+                  }}
+                />
+              </>
             )}
           </div>
           <div className="space-y-6">
@@ -249,7 +272,14 @@ const ReactDebuggingDetail = () => {
             <div className="grid gap-6 xl:grid-cols-2">
               <div className="glass rounded-2xl p-4">
                 <h3 className="font-display text-lg">Preview</h3>
-                <div ref={previewHostRef} className="mt-3 min-h-[240px] rounded-xl border border-white/10 bg-white p-4 text-ink-950" />
+                <div className="relative mt-3 min-h-[240px] rounded-xl border border-white/10 bg-white p-4 text-ink-950">
+                  <div ref={previewHostRef} className="min-h-[208px]" />
+                  {!previewResult && (
+                    <div className="absolute inset-4 flex items-start">
+                      <p className="text-sm text-slate-500">Run the app to render the preview.</p>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="glass rounded-2xl p-4">
                 <h3 className="font-display text-lg">Test results</h3>

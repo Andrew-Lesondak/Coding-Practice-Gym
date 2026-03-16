@@ -20,7 +20,7 @@ vi.mock('../lib/reactDebuggingRunner', async () => {
 describe('ReactDebugging detail', () => {
   it('switches files, runs tests, and unlocks review on submit', async () => {
     render(
-      <MemoryRouter initialEntries={['/react-debugging/react-debug-effect-stale-profile']}>
+      <MemoryRouter initialEntries={['/react-debugging/react-debug-profile-switch-refresh']}>
         <Routes>
           <Route path="/react-debugging/:id" element={<ReactDebuggingDetail />} />
         </Routes>
@@ -28,14 +28,24 @@ describe('ReactDebugging detail', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'ProfileCard.tsx' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'components/ProfilePanel.tsx' }));
     expect(screen.getByDisplayValue(/React.useEffect/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Run tests' }));
     expect(await screen.findByText('Failed')).toBeInTheDocument();
+    expect(runTests).toHaveBeenCalledWith(
+      expect.objectContaining({
+        edits: {}
+      })
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
     expect(await screen.findByText('Root cause')).toBeInTheDocument();
-    expect(screen.getByText('Keep the effect dependency list aligned with the values it reads.')).toBeInTheDocument();
+    expect(screen.getByText('Effects should list every reactive value they read from the component scope.')).toBeInTheDocument();
+    expect(submitSolution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        edits: {}
+      })
+    );
   });
 });

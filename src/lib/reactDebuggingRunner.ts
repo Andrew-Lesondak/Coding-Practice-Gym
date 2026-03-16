@@ -98,9 +98,32 @@ const createLogger = () => {
   return { logs, restore: () => Object.assign(console, originalConsole) };
 };
 
+type RuntimeOverrides = {
+  require?: Record<string, unknown>;
+};
+
 export const normalizeDebuggingPath = (path: string) => {
   const clean = path.replace(/\\/g, '/').replace(/\/+/g, '/');
   return clean.startsWith('/') ? clean : `/${clean}`;
+};
+
+const resolveRelativeDebuggingPath = (fromPath: string, request: string) => {
+  const from = normalizeDebuggingPath(fromPath);
+  const baseParts = from.split('/');
+  baseParts.pop();
+  const requestParts = request.split('/');
+  const resolvedParts = [...baseParts];
+
+  for (const part of requestParts) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (resolvedParts.length > 1) resolvedParts.pop();
+      continue;
+    }
+    resolvedParts.push(part);
+  }
+
+  return normalizeDebuggingPath(resolvedParts.join('/'));
 };
 
 export const resolveDebuggingImport = (
@@ -109,10 +132,7 @@ export const resolveDebuggingImport = (
   files: Pick<ReactDebuggingFile, 'path'>[]
 ) => {
   if (!request.startsWith('.')) return request;
-  const from = normalizeDebuggingPath(fromPath);
-  const base = from.slice(0, from.lastIndexOf('/') + 1);
-  const target = new URL(request, `file://${base}`).pathname;
-  const normalized = normalizeDebuggingPath(target);
+  const normalized = resolveRelativeDebuggingPath(fromPath, request);
   const fileSet = new Set(files.map((file) => normalizeDebuggingPath(file.path)));
   for (const extension of RESOLVABLE_EXTENSIONS) {
     const candidate = normalizeDebuggingPath(`${normalized}${extension}`);
@@ -236,7 +256,7 @@ class PreviewBoundary extends React.Component<
   }
 }
 
-const createRuntime = (files: ReactDebuggingFile[]) => {
+const createRuntime = (files: ReactDebuggingFile[], overrides: RuntimeOverrides = {}) => {
   const normalizedFiles = files.map((file) => ({ ...file, path: normalizeDebuggingPath(file.path) }));
   const fileMap = new Map(normalizedFiles.map((file) => [file.path, file]));
   const cache = new Map<string, any>();
@@ -266,6 +286,7 @@ const createRuntime = (files: ReactDebuggingFile[]) => {
     const module = { exports: {} as any };
     cache.set(path, module.exports);
     const localRequire = (request: string) => {
+      if (request in (overrides.require ?? {})) return overrides.require?.[request];
       if (request === 'react') return React;
       if (request === 'react-dom/client') return { createRoot };
       if (request === '@testing-library/react') return { render, screen, fireEvent, act, cleanup, within };
@@ -381,7 +402,8 @@ export const runReactDebuggingPreview = async ({
 
 const loadTests = (
   files: ReactDebuggingFile[],
-  testCode: string
+  testCode: string,
+  overrides: RuntimeOverrides = {}
 ): TestCase[] => {
   const runtime = createRuntime([
     ...files,
@@ -391,7 +413,7 @@ const loadTests = (
       contents: testCode,
       editable: false
     }
-  ]);
+  ], overrides);
   const testExports = runtime.loadModule('/__tests__.tsx');
   const tests = testExports.tests ?? [];
   if (!Array.isArray(tests)) {
@@ -426,14 +448,30 @@ export const runReactDebuggingTests = async ({
     for (let index = 0; index < initialTests.length; index += 1) {
       cleanup();
       const runtimeFiles = buildEditableFileMap(problem, edits);
-      const tests = loadTests(runtimeFiles, testCode);
-      const test = tests[index];
       const host = document.createElement('div');
       document.body.appendChild(host);
-      const localRender = (ui: React.ReactElement, options?: Parameters<typeof render>[1]) =>
-        render(ui, { container: host, baseElement: host, ...options });
+      const localRender = (ui: React.ReactElement, options?: Parameters<typeof render>[1]) => {
+        const container = options?.container ?? host;
+        const baseElement = options?.baseElement ?? container;
+        return render(ui, { ...options, container, baseElement });
+      };
       const localScreen = within(host);
       const expect = createExpect();
+      const previousExpect = (globalThis as { expect?: ReturnType<typeof createExpect> }).expect;
+      (globalThis as { expect?: ReturnType<typeof createExpect> }).expect = expect;
+      const tests = loadTests(runtimeFiles, testCode, {
+        require: {
+          '@testing-library/react': {
+            render: localRender,
+            screen: localScreen,
+            fireEvent,
+            act,
+            cleanup,
+            within
+          }
+        }
+      });
+      const test = tests[index];
       try {
         await withTimeout(
           Promise.resolve(test.run({ React, render: localRender as typeof render, screen: localScreen as typeof screen, fireEvent, act, expect })),
@@ -443,6 +481,11 @@ export const runReactDebuggingTests = async ({
       } catch (error) {
         results.push({ name: test.name, passed: false, error: (error as Error).message });
       } finally {
+        if (previousExpect) {
+          (globalThis as { expect?: ReturnType<typeof createExpect> }).expect = previousExpect;
+        } else {
+          delete (globalThis as { expect?: ReturnType<typeof createExpect> }).expect;
+        }
         cleanup();
         host.remove();
       }
@@ -476,10 +519,25 @@ export const submitReactDebuggingSolution = async ({
   edits: Record<string, string>;
   timeoutMs?: number;
 }) => {
-  return runReactDebuggingTests({
+  const visible = await runReactDebuggingTests({
     problem,
     edits,
-    testCode: `${problem.tests.visible}\n${problem.tests.hidden}`,
+    testCode: problem.tests.visible,
     timeoutMs
   });
+
+  const hidden = await runReactDebuggingTests({
+    problem,
+    edits,
+    testCode: problem.tests.hidden,
+    timeoutMs
+  });
+
+  return {
+    ok: visible.ok && hidden.ok,
+    errorType: visible.ok ? hidden.errorType : visible.errorType,
+    error: visible.ok ? hidden.error : visible.error,
+    results: [...visible.results, ...hidden.results],
+    logs: [...visible.logs, ...hidden.logs]
+  };
 };
