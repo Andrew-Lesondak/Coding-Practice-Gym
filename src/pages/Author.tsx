@@ -5,6 +5,7 @@ import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { ReactDebuggingProblem } from '../types/reactDebugging';
+import { UnitTestingProblem } from '../types/unitTesting';
 import { useAppStore } from '../store/useAppStore';
 import { OverlayPack, normalizeOverlayPack } from '../lib/problemPack';
 import {
@@ -20,7 +21,9 @@ import {
   validateReactCodingProblem,
   validateReactCodingReference,
   validateReactDebuggingProblem,
-  validateReactDebuggingReference
+  validateReactDebuggingReference,
+  validateUnitTestingProblem,
+  validateUnitTestingReference
 } from '../lib/authorValidation';
 import { stableStringify } from '../lib/runnerUtils';
 
@@ -129,14 +132,76 @@ const defaultReactDebuggingProblem = (): ReactDebuggingProblem => ({
   allowedEditablePaths: ['/src/App.tsx']
 });
 
+const defaultUnitTestingProblem = (): UnitTestingProblem => ({
+  id: '',
+  title: '',
+  difficulty: 'easy',
+  category: 'unit',
+  topics: [],
+  framework: 'vitest',
+  promptMarkdown: '',
+  requirements: [],
+  constraints: [],
+  sourceFiles: [
+    {
+      path: '/src/example.ts',
+      language: 'ts',
+      contents: 'export const example = () => 1;\n',
+      editable: false
+    }
+  ],
+  testStubFile: {
+    path: '/src/example.test.ts',
+    language: 'ts',
+    contents: [
+      'import { describe } from "vitest";',
+      '',
+      'describe("example", () => {',
+      '  // Step 1: Add the first meaningful test.',
+      '  // TODO(step 1 start)',
+      '  // Write your first test here.',
+      '  // TODO(step 1 end)',
+      '});'
+    ].join('\n')
+  },
+  referenceTestFile: {
+    path: '/src/example.test.ts',
+    language: 'ts',
+    contents: ''
+  },
+  testsMeta: {
+    visibleChecks: [],
+    hiddenChecks: []
+  },
+  commonPitfalls: [],
+  recallQuestions: [],
+  solutionNotes: {
+    testingStrategyMarkdown: '',
+    whyTheseAssertionsMarkdown: '',
+    edgeCasesMarkdown: ''
+  },
+  hiddenMutants: [
+    {
+      id: 'example-mutant',
+      mutatedFiles: [
+        {
+          path: '/src/example.ts',
+          contents: 'export const example = () => 0;\n'
+        }
+      ]
+    }
+  ]
+});
+
 const Author = () => {
-  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz' | 'react' | 'react-debug'>('dsa');
+  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz' | 'react' | 'react-debug' | 'unit-test'>('dsa');
   const [draft, setDraft] = useState<Problem>(defaultProblem());
   const [designDraft, setDesignDraft] = useState<SystemDesignPrompt>(defaultSystemDesignPrompt());
   const [quizDraft, setQuizDraft] = useState<QuizQuestion>(defaultQuizQuestion());
   const [reactDraft, setReactDraft] = useState<ReactCodingProblem>(defaultReactCodingProblem());
   const [reactDebugDraft, setReactDebugDraft] = useState<ReactDebuggingProblem>(defaultReactDebuggingProblem());
   const [reactDebugReferenceJson, setReactDebugReferenceJson] = useState('[]');
+  const [unitTestingDraft, setUnitTestingDraft] = useState<UnitTestingProblem>(defaultUnitTestingProblem());
   const [drillDraft, setDrillDraft] = useState<SystemDesignDrill>({
     id: '',
     title: '',
@@ -174,6 +239,8 @@ const Author = () => {
       msgs.push(...validateReactCodingProblem(reactDraft));
     } else if (mode === 'react-debug') {
       msgs.push(...validateReactDebuggingProblem(reactDebugDraft));
+    } else if (mode === 'unit-test') {
+      msgs.push(...validateUnitTestingProblem(unitTestingDraft));
     } else {
       msgs.push(...validateDesignStepMarkers(drillDraft.starterTemplateMarkdown));
       msgs.push(...validateDrill(drillDraft));
@@ -188,7 +255,8 @@ const Author = () => {
     designDraft.rubric,
     quizDraft,
     reactDraft,
-    reactDebugDraft
+    reactDebugDraft,
+    unitTestingDraft
   ]);
 
   useEffect(() => {
@@ -197,7 +265,7 @@ const Author = () => {
 
   useEffect(() => {
     let timer: number | undefined;
-    if (mode !== 'dsa' && mode !== 'react' && mode !== 'react-debug') {
+    if (mode !== 'dsa' && mode !== 'react' && mode !== 'react-debug' && mode !== 'unit-test') {
       setRefMessages([]);
       return;
     }
@@ -221,6 +289,10 @@ const Author = () => {
         return;
       }
     }
+    if (mode === 'unit-test' && !unitTestingDraft.referenceTestFile.contents.trim()) {
+      setRefMessages([{ type: 'error', message: 'Reference test file is required.' }]);
+      return;
+    }
     setIsValidatingRef(true);
     timer = window.setTimeout(() => {
       if (mode === 'react') {
@@ -234,6 +306,11 @@ const Author = () => {
           setRefMessages(msgs);
           setIsValidatingRef(false);
         });
+      } else if (mode === 'unit-test') {
+        validateUnitTestingReference(unitTestingDraft).then((msgs) => {
+          setRefMessages(msgs);
+          setIsValidatingRef(false);
+        });
       } else {
         validateReferenceSolution(draft).then((msgs) => {
           setRefMessages(msgs.length > 0 ? msgs : [{ type: 'warning', message: 'Reference solution passed all tests.' }]);
@@ -244,7 +321,7 @@ const Author = () => {
     return () => {
       if (timer) window.clearTimeout(timer);
     };
-  }, [draft, mode, reactDraft, reactDebugDraft, reactDebugReferenceJson]);
+  }, [draft, mode, reactDraft, reactDebugDraft, reactDebugReferenceJson, unitTestingDraft]);
 
   const hasBlockingErrors = messages.some((m) => m.type === 'error') || refMessages.some((m) => m.type === 'error');
 
@@ -255,6 +332,8 @@ const Author = () => {
   const updateReactDraft = (patch: Partial<ReactCodingProblem>) => setReactDraft((prev) => ({ ...prev, ...patch }));
   const updateReactDebugDraft = (patch: Partial<ReactDebuggingProblem>) =>
     setReactDebugDraft((prev) => ({ ...prev, ...patch }));
+  const updateUnitTestingDraft = (patch: Partial<UnitTestingProblem>) =>
+    setUnitTestingDraft((prev) => ({ ...prev, ...patch }));
 
   const updateTests = (kind: 'visible' | 'hidden', index: number, patch: Partial<TestCase>) => {
     setDraft((prev) => {
@@ -290,6 +369,8 @@ const Author = () => {
         ? reactDraft
         : mode === 'react-debug'
         ? { ...reactDebugDraft, referenceFixedFiles: JSON.parse(reactDebugReferenceJson || '[]') }
+        : mode === 'unit-test'
+        ? unitTestingDraft
         : drillDraft,
       null,
       2
@@ -329,6 +410,8 @@ const Author = () => {
           forbiddenPaths: next.forbiddenPaths
         });
         setReactDebugReferenceJson(JSON.stringify(next.referenceFixedFiles ?? [], null, 2));
+      } else if (mode === 'unit-test') {
+        setUnitTestingDraft(parsed as UnitTestingProblem);
       } else {
         setDrillDraft(parsed as SystemDesignDrill);
       }
@@ -349,6 +432,8 @@ const Author = () => {
         ? reactDraft
         : mode === 'react-debug'
         ? { ...reactDebugDraft, referenceFixedFiles: JSON.parse(reactDebugReferenceJson || '[]') }
+        : mode === 'unit-test'
+        ? unitTestingDraft
         : drillDraft,
       null,
       2
@@ -367,12 +452,14 @@ const Author = () => {
     const mergedQuizzes = existing?.quizQuestions ?? [];
     const mergedReact = existing?.reactCodingProblems ?? [];
     const mergedReactDebug = existing?.reactDebuggingProblems ?? [];
+    const mergedUnitTesting = existing?.unitTestingProblems ?? [];
     let nextProblems = mergedProblems;
     let nextDesign = mergedDesign;
     let nextDrills = mergedDrills;
     let nextQuizzes = mergedQuizzes;
     let nextReact = mergedReact;
     let nextReactDebug = mergedReactDebug;
+    let nextUnitTesting = mergedUnitTesting;
     if (mode === 'dsa') {
       nextProblems = mergedProblems.filter((problem) => problem.id !== draft.id);
       nextProblems.push(draft);
@@ -388,6 +475,9 @@ const Author = () => {
     } else if (mode === 'react-debug') {
       nextReactDebug = mergedReactDebug.filter((problem) => problem.id !== reactDebugDraft.id);
       nextReactDebug.push(reactDebugDraft);
+    } else if (mode === 'unit-test') {
+      nextUnitTesting = mergedUnitTesting.filter((problem) => problem.id !== unitTestingDraft.id);
+      nextUnitTesting.push(unitTestingDraft);
     } else {
       nextDrills = mergedDrills.filter((drill) => drill.id !== drillDraft.id);
       nextDrills.push(drillDraft);
@@ -399,6 +489,7 @@ const Author = () => {
       quizQuestions: nextQuizzes,
       reactCodingProblems: nextReact,
       reactDebuggingProblems: nextReactDebug,
+      unitTestingProblems: nextUnitTesting,
       updatedAt: new Date().toISOString(),
       version: 1
     };
@@ -469,6 +560,14 @@ const Author = () => {
             onClick={() => setMode('react')}
           >
             React Coding
+          </button>
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'unit-test' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('unit-test')}
+          >
+            Unit Testing
           </button>
           <button
             className={`rounded-full border px-4 py-2 text-xs ${
@@ -763,6 +862,69 @@ const Author = () => {
                 />
               </label>
             </div>
+          ) : mode === 'unit-test' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                ID
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.id}
+                  onChange={(e) => updateUnitTestingDraft({ id: e.target.value.trim() })}
+                />
+              </label>
+              <label className="text-sm">
+                Title
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.title}
+                  onChange={(e) => updateUnitTestingDraft({ title: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Difficulty
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={unitTestingDraft.difficulty}
+                  onChange={(e) => updateUnitTestingDraft({ difficulty: e.target.value as UnitTestingProblem['difficulty'] })}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Category
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={unitTestingDraft.category}
+                  onChange={(e) => updateUnitTestingDraft({ category: e.target.value as UnitTestingProblem['category'] })}
+                >
+                  <option value="unit">unit</option>
+                  <option value="react-component">react-component</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Framework
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={unitTestingDraft.framework}
+                  onChange={(e) => updateUnitTestingDraft({ framework: e.target.value as UnitTestingProblem['framework'] })}
+                >
+                  <option value="vitest">vitest</option>
+                  <option value="vitest-testing-library">vitest-testing-library</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Topics (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.topics.join(', ')}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({ topics: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) })
+                  }
+                />
+              </label>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm">
@@ -863,6 +1025,15 @@ const Author = () => {
                 onChange={(e) => updateReactDebugDraft({ briefMarkdown: e.target.value })}
               />
             </label>
+          ) : mode === 'unit-test' ? (
+            <label className="text-sm">
+              Prompt (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={unitTestingDraft.promptMarkdown}
+                onChange={(e) => updateUnitTestingDraft({ promptMarkdown: e.target.value })}
+              />
+            </label>
           ) : (
             <label className="text-sm">
               Prompt (Markdown)
@@ -874,7 +1045,7 @@ const Author = () => {
             </label>
           )}
 
-          {(mode === 'dsa' || mode === 'system' || mode === 'react') && (
+          {(mode === 'dsa' || mode === 'system' || mode === 'react' || mode === 'unit-test') && (
             <label className="text-sm">
               Constraints (one per line)
               <textarea
@@ -884,7 +1055,9 @@ const Author = () => {
                     ? draft.constraints.join('\n')
                     : mode === 'system'
                     ? designDraft.constraints.join('\n')
-                    : reactDraft.constraints.join('\n')
+                    : mode === 'react'
+                    ? reactDraft.constraints.join('\n')
+                    : unitTestingDraft.constraints.join('\n')
                 }
                 onChange={(e) =>
                   mode === 'dsa'
@@ -893,7 +1066,11 @@ const Author = () => {
                     ? updateDesignDraft({
                         constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
-                    : updateReactDraft({
+                    : mode === 'react'
+                    ? updateReactDraft({
+                        constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
+                    : updateUnitTestingDraft({
                         constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
                 }
@@ -901,16 +1078,20 @@ const Author = () => {
             </label>
           )}
 
-          {mode === 'react' && (
+          {(mode === 'react' || mode === 'unit-test') && (
             <label className="text-sm">
               Requirements (one per line)
               <textarea
                 className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-                value={reactDraft.requirements.join('\n')}
+                value={mode === 'react' ? reactDraft.requirements.join('\n') : unitTestingDraft.requirements.join('\n')}
                 onChange={(e) =>
-                  updateReactDraft({
-                    requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
-                  })
+                  mode === 'react'
+                    ? updateReactDraft({
+                        requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
+                    : updateUnitTestingDraft({
+                        requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
                 }
               />
             </label>
@@ -951,6 +1132,38 @@ const Author = () => {
                     try {
                       const parsed = JSON.parse(e.target.value) as ReactDebuggingProblem['codebase']['files'];
                       updateReactDebugDraft({ codebase: { files: parsed } });
+                    } catch {
+                      setJsonBlob(e.target.value);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          )}
+          {mode === 'unit-test' && (
+            <div className="grid gap-4">
+              <label className="text-sm">
+                Source files JSON
+                <textarea
+                  className="mt-2 h-56 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                  value={JSON.stringify(unitTestingDraft.sourceFiles, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      updateUnitTestingDraft({ sourceFiles: JSON.parse(e.target.value) as UnitTestingProblem['sourceFiles'] });
+                    } catch {
+                      setJsonBlob(e.target.value);
+                    }
+                  }}
+                />
+              </label>
+              <label className="text-sm">
+                Stub test file JSON
+                <textarea
+                  className="mt-2 h-40 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                  value={JSON.stringify(unitTestingDraft.testStubFile, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      updateUnitTestingDraft({ testStubFile: JSON.parse(e.target.value) as UnitTestingProblem['testStubFile'] });
                     } catch {
                       setJsonBlob(e.target.value);
                     }
@@ -1011,6 +1224,45 @@ const Author = () => {
                   className="mt-2 h-24 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
                   value={reactDebugDraft.solutionNotes.edgeCasesMarkdown}
                   onChange={(e) => updateReactDebugDraft({ solutionNotes: { ...reactDebugDraft.solutionNotes, edgeCasesMarkdown: e.target.value } })}
+                />
+              </label>
+            </div>
+          ) : mode === 'unit-test' ? (
+            <div className="grid gap-4">
+              <label className="text-sm">
+                Testing strategy review (Markdown)
+                <textarea
+                  className="mt-2 h-24 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.solutionNotes.testingStrategyMarkdown}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      solutionNotes: { ...unitTestingDraft.solutionNotes, testingStrategyMarkdown: e.target.value }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Why these assertions matter (Markdown)
+                <textarea
+                  className="mt-2 h-24 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.solutionNotes.whyTheseAssertionsMarkdown}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      solutionNotes: { ...unitTestingDraft.solutionNotes, whyTheseAssertionsMarkdown: e.target.value }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Edge cases review (Markdown)
+                <textarea
+                  className="mt-2 h-24 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.solutionNotes.edgeCasesMarkdown}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      solutionNotes: { ...unitTestingDraft.solutionNotes, edgeCasesMarkdown: e.target.value }
+                    })
+                  }
                 />
               </label>
             </div>
@@ -1244,6 +1496,40 @@ const Author = () => {
               />
             </label>
           )}
+          {mode === 'unit-test' && (
+            <>
+              <label className="text-sm">
+                Reference test file JSON
+                <textarea
+                  className="mt-2 h-40 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                  value={JSON.stringify(unitTestingDraft.referenceTestFile, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      updateUnitTestingDraft({
+                        referenceTestFile: JSON.parse(e.target.value) as UnitTestingProblem['referenceTestFile']
+                      });
+                    } catch {
+                      setJsonBlob(e.target.value);
+                    }
+                  }}
+                />
+              </label>
+              <label className="text-sm">
+                Hidden mutants JSON
+                <textarea
+                  className="mt-2 h-48 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                  value={JSON.stringify(unitTestingDraft.hiddenMutants, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      updateUnitTestingDraft({ hiddenMutants: JSON.parse(e.target.value) as UnitTestingProblem['hiddenMutants'] });
+                    } catch {
+                      setJsonBlob(e.target.value);
+                    }
+                  }}
+                />
+              </label>
+            </>
+          )}
           {mode === 'system' && (
             <label className="text-sm">
               Reference overview (Markdown)
@@ -1352,6 +1638,63 @@ const Author = () => {
                   className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
                   value={reactDebugDraft.metadata.estimatedMinutes}
                   onChange={(e) => updateReactDebugDraft({ metadata: { estimatedMinutes: Number(e.target.value) } })}
+                />
+              </label>
+            </div>
+          ) : mode === 'unit-test' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                Visible checks (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.testsMeta.visibleChecks.join('\n')}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      testsMeta: {
+                        ...unitTestingDraft.testsMeta,
+                        visibleChecks: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Hidden checks (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.testsMeta.hiddenChecks.join('\n')}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      testsMeta: {
+                        ...unitTestingDraft.testsMeta,
+                        hiddenChecks: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Common pitfalls (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.commonPitfalls.join('\n')}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      commonPitfalls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Recall questions (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={unitTestingDraft.recallQuestions.join('\n')}
+                  onChange={(e) =>
+                    updateUnitTestingDraft({
+                      recallQuestions: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
                 />
               </label>
             </div>
@@ -1585,6 +1928,14 @@ const Author = () => {
               </label>
               <p className="text-xs text-mist-300">
                 Use relative imports like <code>import App from './src/App'</code>. Validation requires a separate fixed reference codebase JSON.
+              </p>
+            </div>
+          )}
+          {mode === 'unit-test' && (
+            <div className="glass rounded-2xl p-5 space-y-4">
+              <h3 className="font-display text-lg">Unit Testing metadata</h3>
+              <p className="text-xs text-mist-300">
+                Source files and mutants are authored as JSON. Validation checks step markers, reference tests, import resolution, and whether the reference tests kill the hidden mutants.
               </p>
             </div>
           )}

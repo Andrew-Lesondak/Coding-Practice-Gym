@@ -4,6 +4,7 @@ export type ErrorType =
   | 'TIMEOUT'
   | 'HARNESS_ERROR'
   | 'TEST_FAILURE'
+  | 'WEAK_TEST_FAILURE'
   | 'MODULE_RESOLUTION_ERROR';
 
 type AnyRecord = Record<string, unknown>;

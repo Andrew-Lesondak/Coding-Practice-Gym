@@ -4,6 +4,7 @@ import { SystemDesignDrill } from '../types/systemDesignDrill';
 import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { ReactDebuggingProblem } from '../types/reactDebugging';
+import { UnitTestingProblem } from '../types/unitTesting';
 
 export type OverlayPack = ProblemPack & {
   systemDesignPrompts?: SystemDesignPrompt[];
@@ -11,6 +12,7 @@ export type OverlayPack = ProblemPack & {
   quizQuestions?: QuizQuestion[];
   reactCodingProblems?: ReactCodingProblem[];
   reactDebuggingProblems?: ReactDebuggingProblem[];
+  unitTestingProblems?: UnitTestingProblem[];
 };
 
 export const normalizeOverlayPack = (pack: OverlayPack | null): OverlayPack | null => {
@@ -22,7 +24,8 @@ export const normalizeOverlayPack = (pack: OverlayPack | null): OverlayPack | nu
     systemDesignDrills: Array.isArray(pack.systemDesignDrills) ? pack.systemDesignDrills : [],
     quizQuestions: Array.isArray(pack.quizQuestions) ? pack.quizQuestions : [],
     reactCodingProblems: Array.isArray(pack.reactCodingProblems) ? pack.reactCodingProblems : [],
-    reactDebuggingProblems: Array.isArray(pack.reactDebuggingProblems) ? pack.reactDebuggingProblems : []
+    reactDebuggingProblems: Array.isArray(pack.reactDebuggingProblems) ? pack.reactDebuggingProblems : [],
+    unitTestingProblems: Array.isArray(pack.unitTestingProblems) ? pack.unitTestingProblems : []
   };
   return normalized;
 };
@@ -71,6 +74,17 @@ export const mergeReactDebuggingPacks = (
 ): ReactDebuggingProblem[] => {
   if (!overlay || overlay.length === 0) return base;
   const map = new Map<string, ReactDebuggingProblem>();
+  base.forEach((problem) => map.set(problem.id, problem));
+  overlay.forEach((problem) => map.set(problem.id, problem));
+  return Array.from(map.values());
+};
+
+export const mergeUnitTestingPacks = (
+  base: UnitTestingProblem[],
+  overlay?: UnitTestingProblem[]
+): UnitTestingProblem[] => {
+  if (!overlay || overlay.length === 0) return base;
+  const map = new Map<string, UnitTestingProblem>();
   base.forEach((problem) => map.set(problem.id, problem));
   overlay.forEach((problem) => map.set(problem.id, problem));
   return Array.from(map.values());

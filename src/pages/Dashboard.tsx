@@ -27,6 +27,9 @@ const Dashboard = () => {
             <Link to="/react-debugging" className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200">
               Debug React
             </Link>
+            <Link to="/unit-testing" className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200">
+              Write tests
+            </Link>
             <Link to="/catalog" className="rounded-full border border-white/15 px-4 py-2 text-sm text-mist-200">
               Review catalog
             </Link>

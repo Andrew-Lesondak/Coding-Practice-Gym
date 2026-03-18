@@ -123,6 +123,57 @@ Limitations:
 - CSS files are injected for preview only; they do not export CSS-module bindings
 - Tests use a lightweight Testing Library-style harness, not Jest/Vitest globals
 
+## Unit Testing Gym
+
+Unit Testing Gym teaches test writing against existing JavaScript/TypeScript utilities and React components.
+
+- Routes: `/unit-testing`, `/unit-testing/catalog`, `/unit-testing/:id`
+- Solve flow: read-only source-under-test, editable guided test stub, stepper, visible run feedback, hidden mutant validation, and review
+- Guided test stubs use the same strict `Step` headers + `TODO(step n start/end)` markers as the DSA and React Coding modes
+
+### Unit Testing runner (browser)
+
+The Unit Testing runner stays fully client-side and deterministic:
+
+- Source files and the user-authored test file are loaded as an in-memory module graph
+- `sucrase` transpiles TS/TSX/JS/JSX files in-browser
+- A lightweight Vitest-style collector supports `describe`, `it`, `test`, `expect`, and scoped Testing Library imports
+- Each test runs in an isolated DOM host so preview content and prior tests do not leak into later assertions
+- Submit first runs the user tests against the intended implementation, then reruns them against hidden mutant variants
+
+Structured runner failures include:
+
+- `SYNTAX_ERROR`
+- `RUNTIME_ERROR`
+- `TEST_FAILURE`
+- `TIMEOUT`
+- `HARNESS_ERROR`
+- `WEAK_TEST_FAILURE`
+
+`WEAK_TEST_FAILURE` means the authored tests passed the main implementation but failed to kill one or more hidden mutants.
+
+### Authoring Unit Testing problems
+
+`UnitTestingProblem` authoring centers on:
+
+- read-only `sourceFiles`
+- a guided `testStubFile`
+- a complete `referenceTestFile`
+- `hiddenMutants` that represent deterministic buggy implementation variants
+
+Reference validation checks:
+
+- step markers parse from the stub test file
+- relative imports resolve
+- the reference tests compile and pass against the intended implementation
+- the same reference tests fail the hidden mutants during submit validation
+
+Limitations:
+
+- The runner supports a focused browser-safe subset of Vitest behavior rather than the full Node/Vitest API surface
+- Hidden mutant validation is deterministic, but it only measures the mutants the authored problem defines
+- Browser-based execution means no filesystem access and no Node-only testing utilities
+
 ## Adaptive Interview Paths
 
 Adaptive Interview Paths generate deterministic, explainable session plans that mix reviews, drills, and timed blocks based on spaced repetition due items, weaknesses, speed gaps, transfer gaps, and confidence calibration.

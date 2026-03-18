@@ -7,6 +7,7 @@ import {
   buildQuizStats,
   buildReactCodingStats,
   buildReactDebuggingStats,
+  buildUnitTestingStats,
   generateInsights
 } from '../lib/analytics/engine';
 
@@ -19,6 +20,7 @@ const AnalyticsDashboard = () => {
   const quizStats = buildQuizStats(progress);
   const reactStats = buildReactCodingStats(progress);
   const reactDebuggingStats = buildReactDebuggingStats(progress);
+  const unitTestingStats = buildUnitTestingStats(progress);
   const insights = generateInsights(dsaStats, drillStats, sdDrillStats, mockStats);
 
   const patterns = Array.from(new Set(dsaStats.flatMap((s) => s.patterns)));
@@ -78,6 +80,17 @@ const AnalyticsDashboard = () => {
       if (stat.timeToFirstVisiblePassSeconds !== undefined) entry.firstTimes.push(stat.timeToFirstVisiblePassSeconds);
       if (stat.totalSolveTimeSeconds !== undefined) entry.totalTimes.push(stat.totalSolveTimeSeconds);
       debuggingByBugType[bugType] = entry;
+    });
+  });
+  const unitTestingByTopic: Record<string, { attempts: number; passes: number; weakFailures: number; solveTimes: number[] }> = {};
+  unitTestingStats.forEach((stat) => {
+    stat.topics.forEach((topic) => {
+      const entry = unitTestingByTopic[topic] ?? { attempts: 0, passes: 0, weakFailures: 0, solveTimes: [] };
+      entry.attempts += stat.attempts;
+      entry.passes += stat.passes;
+      entry.weakFailures += stat.weakFailure ? 1 : 0;
+      if (stat.totalSolveTimeSeconds !== undefined) entry.solveTimes.push(stat.totalSolveTimeSeconds);
+      unitTestingByTopic[topic] = entry;
     });
   });
 
@@ -206,6 +219,28 @@ const AnalyticsDashboard = () => {
                   <span>{passRate}% pass rate</span>
                   <span>{avgFirst !== null ? `${avgFirst}s to visible pass` : 'n/a'}</span>
                   <span>{avgTotal !== null ? `${avgTotal}s total` : 'n/a'}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="glass rounded-2xl p-6">
+        <h2 className="font-display text-lg">Unit Testing Topic Stats</h2>
+        {Object.keys(unitTestingByTopic).length === 0 ? (
+          <p className="mt-3 text-sm text-mist-300">Not enough Unit Testing Gym data yet.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 text-xs text-mist-200">
+            {Object.entries(unitTestingByTopic).map(([topic, stats]) => {
+              const passRate = stats.attempts ? Math.round((stats.passes / stats.attempts) * 100) : 0;
+              const avgSolve = stats.solveTimes.length ? Math.round(stats.solveTimes.reduce((a, b) => a + b, 0) / stats.solveTimes.length) : null;
+              return (
+                <div key={topic} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
+                  <span>{topic}</span>
+                  <span>{passRate}% pass rate</span>
+                  <span>{stats.weakFailures} weak failures</span>
+                  <span>{avgSolve !== null ? `${avgSolve}s avg solve` : 'n/a'}</span>
                 </div>
               );
             })}

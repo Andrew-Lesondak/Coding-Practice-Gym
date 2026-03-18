@@ -1,4 +1,4 @@
-import { buildReactDebuggingStats, generateInsights } from '../lib/analytics/engine';
+import { buildReactDebuggingStats, buildUnitTestingStats, generateInsights } from '../lib/analytics/engine';
 
 describe('analytics insights', () => {
   it('flags speed vs accuracy drop', () => {
@@ -43,5 +43,33 @@ describe('analytics insights', () => {
     } as any);
 
     expect(stats.find((item) => item.problemId === 'react-debug-profile-switch-refresh')?.timeToFirstVisiblePassSeconds).toBe(60);
+  });
+
+  it('builds unit testing stats including weak failures', () => {
+    const stats = buildUnitTestingStats({
+      problems: {},
+      systemDesign: {},
+      systemDesignDrills: {},
+      quizzes: {},
+      reactCoding: {},
+      reactDebugging: {},
+      unitTesting: {
+        'unit-testing-sum-positive-numbers': {
+          attempts: 2,
+          passes: 1,
+          stepCompletion: {},
+          startedAt: '2026-03-16T10:00:00.000Z',
+          lastPassedAt: '2026-03-16T10:02:00.000Z',
+          lastWeakFailureAt: '2026-03-16T10:01:00.000Z',
+          reviewIntervalDays: 2,
+          easeFactor: 2.3,
+          explanationHistory: []
+        }
+      }
+    } as any);
+
+    const entry = stats.find((item) => item.problemId === 'unit-testing-sum-positive-numbers');
+    expect(entry?.weakFailure).toBe(true);
+    expect(entry?.totalSolveTimeSeconds).toBe(120);
   });
 });

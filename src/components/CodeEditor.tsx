@@ -6,13 +6,15 @@ const CodeEditor = ({
   language,
   onChange,
   path,
-  suppressDiagnostics = false
+  suppressDiagnostics = false,
+  readOnly = false
 }: {
   value: string;
   language: 'typescript' | 'javascript';
   onChange: (value: string) => void;
   path?: string;
   suppressDiagnostics?: boolean;
+  readOnly?: boolean;
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
@@ -278,7 +280,8 @@ const CodeEditor = ({
               scrollBeyondLastLine: false,
               padding: { top: 16, bottom: 16 },
               wordWrap: 'on',
-              fixedOverflowWidgets: true
+              fixedOverflowWidgets: true,
+              readOnly
             }}
             height="100%"
             width="100%"

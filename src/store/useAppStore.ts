@@ -10,6 +10,7 @@ import {
 import { QuizProgress } from '../types/quiz';
 import { ReactCodingProgress } from '../types/reactCoding';
 import { ReactDebuggingProgress } from '../types/reactDebugging';
+import { UnitTestingProgress } from '../types/unitTesting';
 import { OverlayPack } from '../lib/problemPack';
 import { DrillAttempt } from '../lib/dsaDrillStorage';
 import { SystemDesignMockSession } from '../types/systemDesignMock';
@@ -21,6 +22,7 @@ import { setSystemDesignDrillProgressEntry } from '../storage/stores/systemDesig
 import { setQuizProgressEntry } from '../storage/stores/quizProgressStore';
 import { setReactCodingProgressEntry } from '../storage/stores/reactCodingStore';
 import { setReactDebuggingProgressEntry } from '../storage/stores/reactDebuggingStore';
+import { setUnitTestingProgressEntry } from '../storage/stores/unitTestingStore';
 import { setSettings } from '../storage/stores/settingsStore';
 import { clearOverlayPack, setOverlayPack as persistOverlayPack } from '../storage/stores/overlayPackStore';
 import { addDrillAttempt } from '../storage/stores/dsaDrillsStore';
@@ -82,6 +84,15 @@ const createDefaultReactCodingProgress = (): ReactCodingProgress => ({
 const createDefaultReactDebuggingProgress = (): ReactDebuggingProgress => ({
   attempts: 0,
   passes: 0,
+  reviewIntervalDays: 2,
+  easeFactor: 2.3,
+  explanationHistory: []
+});
+
+const createDefaultUnitTestingProgress = (): UnitTestingProgress => ({
+  attempts: 0,
+  passes: 0,
+  stepCompletion: {},
   reviewIntervalDays: 2,
   easeFactor: 2.3,
   explanationHistory: []
@@ -151,6 +162,12 @@ type AppState = {
     problemId: string,
     explanation: { rootCause: string; signal: string; edgeCase: string }
   ) => void;
+  updateUnitTestingProgress: (problemId: string, patch: Partial<UnitTestingProgress>) => void;
+  setUnitTestingStepStatus: (problemId: string, stepIndex: number, status: StepCompletion[number]) => void;
+  saveUnitTestingExplanation: (
+    problemId: string,
+    explanation: { behaviorProof: string; edgeCase: string; brittleness: string }
+  ) => void;
   addDrillAttempt: (attempt: DrillAttempt) => void;
   addMockSession: (session: SystemDesignMockSession) => void;
   addQuizSession: (session: QuizSession) => void;
@@ -159,7 +176,7 @@ type AppState = {
 };
 
 export const getDefaultDataState = () => ({
-  progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {}, reactCoding: {}, reactDebugging: {} },
+  progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {}, reactCoding: {}, reactDebugging: {}, unitTesting: {} },
   settings: initialSettings,
   overlayPack: null,
   overlayVersion: 0,
@@ -187,7 +204,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
             systemDesignDrills: payload.progress.systemDesignDrills ?? state.progress.systemDesignDrills,
             quizzes: payload.progress.quizzes ?? state.progress.quizzes,
             reactCoding: payload.progress.reactCoding ?? state.progress.reactCoding,
-            reactDebugging: payload.progress.reactDebugging ?? state.progress.reactDebugging
+            reactDebugging: payload.progress.reactDebugging ?? state.progress.reactDebugging,
+            unitTesting: payload.progress.unitTesting ?? state.progress.unitTesting
           }
         : state.progress,
       settings: payload.settings ?? state.settings,
@@ -600,6 +618,68 @@ export const useAppStore = create<AppState>()((set, get) => ({
       void setReactDebuggingProgressEntry(problemId, next);
     }
   },
+  updateUnitTestingProgress: (problemId, patch) => {
+    const current = get().progress.unitTesting?.[problemId] ?? createDefaultUnitTestingProgress();
+    const next = { ...current, ...patch };
+    set((state) => ({
+      progress: {
+        ...state.progress,
+        unitTesting: {
+          ...(state.progress.unitTesting ?? {}),
+          [problemId]: next
+        }
+      }
+    }));
+    if (shouldPersist(get().storageStatus)) {
+      void setUnitTestingProgressEntry(problemId, next);
+    }
+  },
+  setUnitTestingStepStatus: (problemId, stepIndex, status) => {
+    const current = get().progress.unitTesting?.[problemId] ?? createDefaultUnitTestingProgress();
+    const next = {
+      ...current,
+      stepCompletion: {
+        ...current.stepCompletion,
+        [stepIndex]: status
+      }
+    };
+    set((state) => ({
+      progress: {
+        ...state.progress,
+        unitTesting: {
+          ...(state.progress.unitTesting ?? {}),
+          [problemId]: next
+        }
+      }
+    }));
+    if (shouldPersist(get().storageStatus)) {
+      void setUnitTestingProgressEntry(problemId, next);
+    }
+  },
+  saveUnitTestingExplanation: (problemId, explanation) => {
+    const current = get().progress.unitTesting?.[problemId] ?? createDefaultUnitTestingProgress();
+    const updatedAt = new Date().toISOString();
+    const existing = current.explanation;
+    const history = current.explanationHistory ?? [];
+    const nextHistory = existing ? [...history, existing] : history;
+    const next = {
+      ...current,
+      explanation: { ...explanation, updatedAt },
+      explanationHistory: nextHistory
+    };
+    set((state) => ({
+      progress: {
+        ...state.progress,
+        unitTesting: {
+          ...(state.progress.unitTesting ?? {}),
+          [problemId]: next
+        }
+      }
+    }));
+    if (shouldPersist(get().storageStatus)) {
+      void setUnitTestingProgressEntry(problemId, next);
+    }
+  },
   addDrillAttempt: (attempt) => {
     set((state) => ({
       drillAttempts: [...state.drillAttempts, attempt]
@@ -670,4 +750,11 @@ export const getReactDebuggingProgress = (
   problemId: string
 ): ReactDebuggingProgress => {
   return state.reactDebugging[problemId] ?? createDefaultReactDebuggingProgress();
+};
+
+export const getUnitTestingProgress = (
+  state: ProgressState,
+  problemId: string
+): UnitTestingProgress => {
+  return state.unitTesting?.[problemId] ?? createDefaultUnitTestingProgress();
 };

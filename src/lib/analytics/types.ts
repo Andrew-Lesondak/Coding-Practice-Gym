@@ -75,6 +75,19 @@ export type ReactDebuggingStats = {
   confidence?: number;
 };
 
+export type UnitTestingStats = {
+  problemId: string;
+  topics: string[];
+  framework: string;
+  category: string;
+  attempts: number;
+  passes: number;
+  score: number;
+  weakFailure: boolean;
+  totalSolveTimeSeconds?: number;
+  confidence?: number;
+};
+
 export type Insight = {
   id: string;
   title: string;

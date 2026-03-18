@@ -10,7 +10,9 @@ import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { runReactTests } from './reactRunner';
 import { ReactDebuggingProblem } from '../types/reactDebugging';
+import { UnitTestingProblem } from '../types/unitTesting';
 import { normalizeDebuggingPath, resolveDebuggingImport, submitReactDebuggingSolution } from './reactDebuggingRunner';
+import { resolveUnitTestingImport, submitUnitTestingSolution, runUnitTestingTests } from './unitTestingRunner';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -307,6 +309,61 @@ export const validateReactDebuggingReference = async (
     return [{ type: 'error', message: result.error ?? 'Reference fixed codebase failed tests.' }];
   }
   return [{ type: 'warning', message: 'Reference fixed codebase passed all tests.' }];
+};
+
+export const validateUnitTestingProblem = (problem: UnitTestingProblem): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (!problem.id) messages.push({ type: 'error', message: 'Problem id is required.' });
+  if (!problem.title) messages.push({ type: 'error', message: 'Title is required.' });
+  if (problem.sourceFiles.length === 0) messages.push({ type: 'error', message: 'Source files are required.' });
+  messages.push(...validateStepMarkers(problem.testStubFile.contents));
+  if (!problem.referenceTestFile.contents.trim()) messages.push({ type: 'error', message: 'Reference test file is required.' });
+  if (problem.hiddenMutants.length === 0) messages.push({ type: 'error', message: 'At least one hidden mutant is required.' });
+
+  const files = [
+    ...problem.sourceFiles.map((file) => ({ path: file.path })),
+    { path: problem.testStubFile.path },
+    { path: problem.referenceTestFile.path }
+  ];
+
+  for (const file of [...problem.sourceFiles, problem.testStubFile, problem.referenceTestFile]) {
+    const matches = file.contents.matchAll(/from\s+['"]([^'"]+)['"]|require\(['"]([^'"]+)['"]\)/g);
+    for (const match of matches) {
+      const target = match[1] ?? match[2];
+      if (!target?.startsWith('.')) continue;
+      try {
+        resolveUnitTestingImport(file.path, target, files);
+      } catch (error) {
+        messages.push({ type: 'error', message: (error as Error).message });
+      }
+    }
+  }
+
+  return messages;
+};
+
+export const validateUnitTestingReference = async (
+  problem: UnitTestingProblem
+): Promise<ValidationMessage[]> => {
+  const visibleResult = await runUnitTestingTests({
+    problem,
+    testCode: problem.referenceTestFile.contents
+  });
+
+  if (!visibleResult.ok) {
+    return [{ type: 'error', message: visibleResult.error ?? 'Reference tests failed on the intended implementation.' }];
+  }
+
+  const submitResult = await submitUnitTestingSolution({
+    problem,
+    testCode: problem.referenceTestFile.contents
+  });
+
+  if (!submitResult.ok) {
+    return [{ type: 'error', message: submitResult.error ?? 'Reference tests did not kill the hidden mutants.' }];
+  }
+
+  return [{ type: 'warning', message: 'Reference tests passed and killed the hidden mutants.' }];
 };
 
 export const validateGuidedStubCompile = (stub: string): ValidationMessage[] => {
