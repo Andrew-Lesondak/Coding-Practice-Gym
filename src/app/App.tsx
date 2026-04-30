@@ -41,6 +41,7 @@ const App = () => {
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const problems = useProblems();
   const hydrate = useAppStore((state) => state.hydrateFromStorage);
+  const settings = useAppStore((state) => state.settings);
   const storageStatus = useAppStore((state) => state.storageStatus);
   const setStorageStatus = useAppStore((state) => state.setStorageStatus);
 
@@ -54,6 +55,12 @@ const App = () => {
       active = false;
     };
   }, [problems]);
+
+
+  useEffect(() => {
+    const theme = settings.theme ?? 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [settings.theme]);
 
   useEffect(() => {
     let active = true;

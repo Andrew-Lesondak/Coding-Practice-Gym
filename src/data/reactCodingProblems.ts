@@ -1,3 +1,4 @@
+import { paymentReactCodingProblems } from './reactCodingProblemsPayments';
 import { ReactCodingProblem } from '../types/reactCoding';
 
 export const reactCodingProblems: ReactCodingProblem[] = [
@@ -7,7 +8,7 @@ export const reactCodingProblems: ReactCodingProblem[] = [
     difficulty: 'easy',
     topics: ['useReducer', 'state'],
     promptMarkdown: `Build a counter component that increments and decrements. Refactor state to use \`useReducer\`.`,
-    requirements: ['Render count', 'Increment and decrement buttons', 'Use useReducer'],
+    requirements: ['Render count', 'Increment and decrement buttons', 'Use useReducer', 'Keep count output in `data-testid="count"` element'],
     constraints: ['No external state libraries'],
     guidedStubTsx: `import React from 'react';
 
@@ -24,7 +25,13 @@ export const reactCodingProblems: ReactCodingProblem[] = [
 // TODO(step 2 end)
 
 export const Counter: React.FC = () => {
-  return;
+  return (
+    <div>
+      <p data-testid="count">0</p>
+      <button>-</button>
+      <button>+</button>
+    </div>
+  );
 };`,
     referenceSolutionTsx: `import React from 'react';
 
@@ -77,7 +84,7 @@ export const tests = [
     difficulty: 'easy',
     topics: ['hooks', 'useRef', 'useEffect'],
     promptMarkdown: `Implement a \`usePrevious\` hook and a demo component that shows current and previous value.`,
-    requirements: ['Hook returns previous value', 'Demo component displays both'],
+    requirements: ['Hook returns previous value', 'Demo component displays both', 'Render current/previous outputs with test ids `current` and `previous`'],
     constraints: ['No external libraries'],
     guidedStubTsx: `import React from 'react';
 
@@ -98,7 +105,13 @@ export const usePrevious = (value: number) => {
 // TODO(step 2 end)
 
 export const PreviousDemo: React.FC = () => {
-  return;
+  return (
+    <div>
+      <p data-testid="current">0</p>
+      <p data-testid="previous">none</p>
+      <button>Inc</button>
+    </div>
+  );
 };`,
     referenceSolutionTsx: `import React from 'react';
 
@@ -730,5 +743,6 @@ export const tests = [
       commonPitfalls: ['Missing dependencies', 'Not handling promises'],
       recallQuestions: ['How to cancel requests?', 'How to handle errors?']
     }
-  }
+  },
+  ...paymentReactCodingProblems
 ];

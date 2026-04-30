@@ -31,23 +31,23 @@ export default {
       },
       colors: {
         ink: {
-          950: '#0b0d12',
-          900: '#121622',
-          800: '#1a2030'
+          950: 'rgb(var(--color-ink-950) / <alpha-value>)',
+          900: 'rgb(var(--color-ink-900) / <alpha-value>)',
+          800: 'rgb(var(--color-ink-800) / <alpha-value>)'
         },
         mist: {
-          50: '#f7f7f9',
-          100: '#eceef2',
-          200: '#d4d9e2',
-          300: '#b4bccb'
+          50: 'rgb(var(--color-mist-50) / <alpha-value>)',
+          100: 'rgb(var(--color-mist-100) / <alpha-value>)',
+          200: 'rgb(var(--color-mist-200) / <alpha-value>)',
+          300: 'rgb(var(--color-mist-300) / <alpha-value>)'
         },
         ember: {
-          500: '#f97316',
-          600: '#ea580c'
+          500: 'rgb(var(--color-ember-500) / <alpha-value>)',
+          600: 'rgb(var(--color-ember-600) / <alpha-value>)'
         },
         tide: {
-          500: '#0ea5e9',
-          600: '#0284c7'
+          500: 'rgb(var(--color-tide-500) / <alpha-value>)',
+          600: 'rgb(var(--color-tide-600) / <alpha-value>)'
         }
       },
       boxShadow: {

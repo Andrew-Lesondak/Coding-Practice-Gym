@@ -2,9 +2,13 @@
   "name": "coding-practice-gym",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "yarn@4.12.0",
+  "engines": {
+    "node": "22.17.0"
+  },
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest",

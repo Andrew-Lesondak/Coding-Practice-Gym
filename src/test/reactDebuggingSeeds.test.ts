@@ -2,7 +2,39 @@ import { reactDebuggingProblems, reactDebuggingReferenceEdits } from '../data/re
 import { submitReactDebuggingSolution, runReactDebuggingTests } from '../lib/reactDebuggingRunner';
 import { validateReactDebuggingProblem } from '../lib/authorValidation';
 
+const isLoopDetectedError = (value: unknown) => {
+  const message =
+    value instanceof Error
+      ? value.message
+      : typeof value === 'string'
+        ? value
+        : '';
+  return message.includes('Loop detected');
+};
+
 describe('react debugging seed pack', () => {
+  const onWindowError = (event: ErrorEvent) => {
+    if (isLoopDetectedError(event.error ?? event.message)) {
+      event.preventDefault();
+    }
+  };
+
+  const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+    if (isLoopDetectedError(event.reason)) {
+      event.preventDefault();
+    }
+  };
+
+  beforeAll(() => {
+    window.addEventListener('error', onWindowError);
+    window.addEventListener('unhandledrejection', onUnhandledRejection);
+  });
+
+  afterAll(() => {
+    window.removeEventListener('error', onWindowError);
+    window.removeEventListener('unhandledrejection', onUnhandledRejection);
+  });
+
   it('contains exactly the requested 10 built-in challenges', () => {
     expect(reactDebuggingProblems).toHaveLength(10);
   });

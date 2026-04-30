@@ -4,6 +4,28 @@
 
 :root {
   color-scheme: dark;
+  --color-ink-950: 11 13 18;
+  --color-ink-900: 18 22 34;
+  --color-ink-800: 26 32 48;
+  --color-mist-50: 247 247 249;
+  --color-mist-100: 236 238 242;
+  --color-mist-200: 212 217 226;
+  --color-mist-300: 180 188 203;
+  --color-ember-500: 249 115 22;
+  --color-ember-600: 234 88 12;
+  --color-tide-500: 14 165 233;
+  --color-tide-600: 2 132 199;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-ink-950: 248 250 252;
+  --color-ink-900: 241 245 249;
+  --color-ink-800: 226 232 240;
+  --color-mist-50: 15 23 42;
+  --color-mist-100: 30 41 59;
+  --color-mist-200: 51 65 85;
+  --color-mist-300: 100 116 139;
 }
 
 body {
@@ -13,16 +35,16 @@ body {
 .code-panel {
   background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.15), transparent 50%),
     radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.15), transparent 45%),
-    #0b0d12;
+    rgb(var(--color-ink-950));
 }
 
 .glass {
-  background: rgba(18, 22, 34, 0.65);
+  background: color-mix(in srgb, rgb(var(--color-ink-900)) 70%, transparent);
   backdrop-filter: blur(14px);
   border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .tab-active {
-  border-bottom: 2px solid #f97316;
-  color: #f97316;
+  border-bottom: 2px solid rgb(var(--color-ember-500));
+  color: rgb(var(--color-ember-500));
 }

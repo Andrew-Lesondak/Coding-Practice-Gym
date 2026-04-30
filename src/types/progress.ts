@@ -111,4 +111,5 @@ export type SettingsState = {
   hintLevel: 0 | 1 | 2 | 3;
   lockSteps: boolean;
   overlayEnabled: boolean;
+  theme?: 'dark' | 'light';
 };

@@ -34,7 +34,8 @@ const initialSettings: SettingsState = {
   languageMode: 'ts',
   hintLevel: 1,
   lockSteps: true,
-  overlayEnabled: false
+  overlayEnabled: false,
+  theme: 'dark'
 };
 
 const createDefaultProgress = (): ProblemProgress => ({

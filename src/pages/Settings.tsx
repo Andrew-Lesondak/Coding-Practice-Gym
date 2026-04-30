@@ -20,10 +20,30 @@ const Settings = () => {
         <div className="flex items-center justify-between">
           <h1 className="font-display text-2xl font-semibold">Settings</h1>
         </div>
-        <p className="mt-2 text-sm text-mist-200">Customize hint levels, step locking, and language mode.</p>
+        <p className="mt-2 text-sm text-mist-200">Customize theme, hint levels, step locking, and language mode.</p>
       </section>
 
       <section className="glass rounded-2xl p-6 space-y-6">
+
+        <div>
+          <label className="text-xs uppercase tracking-[0.2em] text-mist-300">Theme</label>
+          <div className="mt-3 flex gap-3">
+            {(['dark', 'light'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => updateSettings({ theme: mode })}
+                className={`rounded-full border px-4 py-2 text-sm ${
+                  (settings.theme ?? 'dark') === mode
+                    ? 'border-ember-500/60 bg-ember-500/10 text-ember-300'
+                    : 'border-white/10 text-mist-200'
+                }`}
+              >
+                {mode === 'dark' ? 'Dark' : 'Light'}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-mist-300">Language mode</label>
           <div className="mt-3 flex gap-3">

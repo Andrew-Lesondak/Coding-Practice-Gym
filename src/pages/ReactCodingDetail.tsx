@@ -355,7 +355,7 @@ const ReactCodingDetail = () => {
                 </button>
               </div>
             </div>
-            <CodeEditor value={code} language="typescript" onChange={onCodeChange} />
+            <CodeEditor value={code} language="typescript" onChange={onCodeChange} path={`inmemory://react-coding/${problem.id}.tsx`} />
             <div className="rounded-2xl border border-white/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Run output</p>
               <div className="mt-3">
