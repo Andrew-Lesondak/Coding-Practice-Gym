@@ -529,8 +529,8 @@ const jsQuestions: QuizQuestion[] = [
       { id: 'c', text: 'let declarations (usable before init)' },
       { id: 'd', text: 'class declarations (usable before init)' }
     ],
-    ['a', 'b', 'd'],
-    'Function/class/var declarations are hoisted, but let/class are in TDZ.',
+    ['a', 'b'],
+    'Function declarations and `var` are hoisted and usable earlier in scope. `let` and `class` are hoisted but stay in the TDZ until initialized.',
     ['hoisting']
   ),
   mc(
@@ -625,8 +625,8 @@ const jsQuestions: QuizQuestion[] = [
       { id: 'c', text: 'var' },
       { id: 'd', text: 'function' }
     ],
-    ['a', 'b', 'd'],
-    'Function declarations create function scope, and let/const are block-scoped.',
+    ['a', 'b'],
+    '`let` and `const` are block-scoped. `var` is function-scoped, and function declarations create function scope rather than block scope.',
     ['scope']
   ),
   mc(
@@ -1609,8 +1609,8 @@ const reactQuestions: QuizQuestion[] = [
       { id: 'c', text: 'Different types unmount/remount' },
       { id: 'd', text: 'Keys are only for arrays' }
     ],
-    ['a', 'c', 'd'],
-    'Different types cause remount; keys are used primarily in arrays.',
+    ['a', 'c'],
+    'React reconciles by element type first. Different types remount. Keys help list-item identity and do not override type mismatches.',
     ['rendering']
   ),
   tf(

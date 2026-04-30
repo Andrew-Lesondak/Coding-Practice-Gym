@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuizQuestions } from '../lib/useQuizQuestions';
 import { getQuizSession, saveQuizSession } from '../lib/quizStorage';
 import { gradeQuizAnswer } from '../lib/quizEngine';
+import { getQuizSelectionFeedback } from '../lib/quizFeedback';
 import QuizQuestionCard from '../components/QuizQuestionCard';
 import QuizProgressHeader from '../components/QuizProgressHeader';
 import { QuizQuestion, QuizSession as QuizSessionType } from '../types/quiz';
@@ -292,7 +293,12 @@ const QuizSession = () => {
             {lastCorrect ? 'Correct' : 'Incorrect'}
           </p>
           {showExplanation && (
-            <div className="mt-3 text-sm text-mist-200">
+            <div className="mt-3 space-y-2 text-sm text-mist-200">
+              <ul className="list-disc space-y-1 pl-5 text-xs text-mist-200">
+                {getQuizSelectionFeedback(current, session.answers[current.id]).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
               <p>{current.explanationMarkdown}</p>
             </div>
           )}

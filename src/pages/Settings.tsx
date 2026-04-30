@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 
+const SETTINGS_RETURN_KEY = 'coding-practice-gym-settings-return';
+
 const Settings = () => {
   const settings = useAppStore((state) => state.settings);
   const updateSettings = useAppStore((state) => state.updateSettings);
@@ -10,7 +12,15 @@ const Settings = () => {
     <div className="space-y-6">
       <div>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            const returnTo = sessionStorage.getItem(SETTINGS_RETURN_KEY);
+            if (returnTo) {
+              sessionStorage.removeItem(SETTINGS_RETURN_KEY);
+              navigate(returnTo);
+              return;
+            }
+            navigate(-1);
+          }}
           className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200"
         >
           Back

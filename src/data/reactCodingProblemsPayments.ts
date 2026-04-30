@@ -636,7 +636,7 @@ export const useAsync = <T,>(fn: () => Promise<T>) => {
   return;
 };
 
-export const UseAsyncDemo: React.FC<{ fn: () => Promise<string> }> = () => {
+export const UseAsyncDemo = (_props: { fn: () => Promise<string> }) => {
   return (
     <div>
       <button>Run</button>
@@ -687,7 +687,7 @@ export const useAsync = <T,>(fn: () => Promise<T>) => {
   return { data, error, status, execute, reset };
 };
 
-export const UseAsyncDemo: React.FC<{ fn: () => Promise<string> }> = ({ fn }) => {
+export const UseAsyncDemo = ({ fn }: { fn: () => Promise<string> }) => {
   const { data, error, status, execute, reset } = useAsync(fn);
   return (
     <div>
@@ -815,7 +815,7 @@ export const tests = [
 // TODO(step 6 start)
 // TODO(step 6 end)
 
-export const CheckoutFrameHost: React.FC<{ origin: string }> = () => {
+export const CheckoutFrameHost = (_props: { origin: string }) => {
   return (
     <div>
       <iframe title="checkout-frame" />
@@ -833,7 +833,7 @@ const isKnownType = (value: string): value is EventType => {
   return value === 'CHECKOUT_STARTED' || value === 'CHECKOUT_COMPLETE' || value === 'CHECKOUT_ERROR';
 };
 
-export const CheckoutFrameHost: React.FC<{ origin: string }> = ({ origin }) => {
+export const CheckoutFrameHost = ({ origin }: { origin: string }) => {
   const [status, setStatus] = React.useState('idle');
 
   React.useEffect(() => {
@@ -961,7 +961,7 @@ export const tests = [
 // TODO(step 6 start)
 // TODO(step 6 end)
 
-export const PaymentMessage: React.FC<{ config?: { headline?: string; subtext?: string; cta?: string; theme?: string } }> = () => {
+export const PaymentMessage = (_props: { config?: { headline?: string; subtext?: string; cta?: string; theme?: string } }) => {
   return (
     <section data-testid="message" data-theme="light">
       <h2></h2>
@@ -972,7 +972,7 @@ export const PaymentMessage: React.FC<{ config?: { headline?: string; subtext?: 
 };`,
     referenceSolutionTsx: `import React from 'react';
 
-export const PaymentMessage: React.FC<{ config?: { headline?: string; subtext?: string; cta?: string; theme?: string } }> = ({ config }) => {
+export const PaymentMessage = ({ config }: { config?: { headline?: string; subtext?: string; cta?: string; theme?: string } }) => {
   if (!config || !config.headline || !config.headline.trim()) {
     return <p data-testid="fallback">Messaging unavailable</p>;
   }
@@ -1502,7 +1502,7 @@ export class PaymentErrorBoundary extends React.Component<{ logger?: (e: Error) 
   }
 }
 
-export const UnstableCheckout: React.FC<{ crash: boolean }> = ({ crash }) => {
+export const UnstableCheckout = ({ crash }: { crash: boolean }) => {
   if (crash) throw new Error('boom');
   return <p data-testid="ok">ok</p>;
 };`,
@@ -1539,7 +1539,7 @@ export class PaymentErrorBoundary extends React.Component<{ logger?: (e: Error) 
   }
 }
 
-export const UnstableCheckout: React.FC<{ crash: boolean }> = ({ crash }) => {
+export const UnstableCheckout = ({ crash }: { crash: boolean }) => {
   if (crash) throw new Error('boom');
   return <p data-testid="ok">ok</p>;
 };`,
@@ -1791,7 +1791,7 @@ export const tests = [
 
 type Flags = { enableNewMessaging?: boolean; enableExpressCheckout?: boolean; enableExperimentLogging?: boolean };
 
-export const FlaggedCheckout: React.FC<{ flags?: Flags; logger?: (enabled: string[]) => void }> = () => {
+export const FlaggedCheckout = (_props: { flags?: Flags; logger?: (enabled: string[]) => void }) => {
   return (
     <section>
       <p data-testid="default">Checkout</p>
@@ -1810,7 +1810,7 @@ const defaults: Required<Flags> = {
   enableExperimentLogging: false
 };
 
-export const FlaggedCheckout: React.FC<{ flags?: Flags; logger?: (enabled: string[]) => void }> = ({ flags, logger }) => {
+export const FlaggedCheckout = ({ flags, logger }: { flags?: Flags; logger?: (enabled: string[]) => void }) => {
   const merged = { ...defaults, ...(flags ?? {}) };
   React.useEffect(() => {
     if (!merged.enableExperimentLogging) return;
@@ -1920,7 +1920,7 @@ export const tests = [
 
 type Plan = { id: string; label: string; available: boolean };
 
-export const PaymentOptionSelector: React.FC<{ plans: Plan[] }> = () => {
+export const PaymentOptionSelector = (_props: { plans: Plan[] }) => {
   return (
     <section>
       <div role="radiogroup"></div>
@@ -1932,7 +1932,7 @@ export const PaymentOptionSelector: React.FC<{ plans: Plan[] }> = () => {
 
 type Plan = { id: string; label: string; available: boolean };
 
-export const PaymentOptionSelector: React.FC<{ plans: Plan[] }> = ({ plans }) => {
+export const PaymentOptionSelector = ({ plans }: { plans: Plan[] }) => {
   const firstAvailable = plans.find((p) => p.available)?.id ?? '';
   const [selected, setSelected] = React.useState(firstAvailable);
 
@@ -2085,7 +2085,7 @@ export const tests = [
 
 type Merchant = { id: string; name: string; status: 'active' | 'paused'; volume: number };
 
-export const MerchantTable: React.FC<{ merchants: Merchant[] }> = () => {
+export const MerchantTable = (_props: { merchants: Merchant[] }) => {
   return (
     <section>
       <input aria-label="search merchants" />
@@ -2101,7 +2101,7 @@ export const MerchantTable: React.FC<{ merchants: Merchant[] }> = () => {
 
 type Merchant = { id: string; name: string; status: 'active' | 'paused'; volume: number };
 
-export const MerchantTable: React.FC<{ merchants: Merchant[] }> = ({ merchants }) => {
+export const MerchantTable = ({ merchants }: { merchants: Merchant[] }) => {
   const [status, setStatus] = React.useState<'all' | 'active' | 'paused'>('all');
   const [search, setSearch] = React.useState('');
   const [dir, setDir] = React.useState<'asc' | 'desc'>('desc');

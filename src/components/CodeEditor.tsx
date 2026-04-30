@@ -1,25 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import Editor, { loader } from '@monaco-editor/react';
-import * as Monaco from 'monaco-editor';
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
-loader.config({ monaco: Monaco });
 
-const monacoEnv = globalThis as typeof globalThis & {
-  MonacoEnvironment?: { getWorker: (_moduleId: string, label: string) => Worker };
-};
+const LOCAL_MONACO_VS_PATH = '/monaco/vs';
+const CDN_MONACO_VS = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs';
+let monacoLoaderConfigured = false;
 
-if (!monacoEnv.MonacoEnvironment) {
-  monacoEnv.MonacoEnvironment = {
-    getWorker: (_moduleId: string, label: string) => {
-      if (label === 'typescript' || label === 'javascript') {
-        return new tsWorker();
-      }
-      return new editorWorker();
+const ensureMonacoLoaderConfigured = async () => {
+  if (monacoLoaderConfigured) return;
+  let vsPath = CDN_MONACO_VS;
+  try {
+    const localVsUrl = new URL(LOCAL_MONACO_VS_PATH, window.location.origin).toString();
+    const response = await fetch(`${localVsUrl}/loader.js`, { method: 'HEAD' });
+    if (response.ok) {
+      vsPath = localVsUrl;
     }
-  };
-}
+  } catch {
+    // Fall back to CDN when local Monaco assets are unavailable.
+  }
+  loader.config({ paths: { vs: vsPath } });
+  monacoLoaderConfigured = true;
+};
 
 const CodeEditor = ({
   value,
@@ -41,6 +42,7 @@ const CodeEditor = ({
   const onChangeRef = useRef(onChange);
   const monacoRef = useRef<any>(null);
   const [copied, setCopied] = useState(false);
+  const [loaderReady, setLoaderReady] = useState(false);
   const editorFocusedRef = useRef(false);
   const latestValueRef = useRef(value);
   const hasMountedRef = useRef(false);
@@ -49,7 +51,7 @@ const CodeEditor = ({
   const modelIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `model-${Date.now()}`
   );
-  const modelPath = path ?? `inmemory://model/${modelIdRef.current}.${language === 'typescript' ? 'ts' : 'js'}`;
+  const modelPath = path ?? `file:///model/${modelIdRef.current}.${language === 'typescript' ? 'ts' : 'js'}`;
 
   useEffect(() => {
     latestValueRef.current = value;
@@ -58,6 +60,16 @@ const CodeEditor = ({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    let active = true;
+    ensureMonacoLoaderConfigured().finally(() => {
+      if (active) setLoaderReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -178,6 +190,9 @@ const CodeEditor = ({
         style={{ minHeight: 360 }}
       >
         <div className="h-full w-full">
+          {!loaderReady ? (
+            <div className="flex h-full items-center justify-center text-sm text-mist-300">Loading editor...</div>
+          ) : (
           <Editor
             value={value}
             theme="vs-dark"
@@ -214,7 +229,7 @@ const CodeEditor = ({
               `;
               monaco.languages.typescript.typescriptDefaults.addExtraLib(
                 reactTypes,
-                'inmemory://types/react-shim.d.ts'
+                'file:///types/react-shim.d.ts'
               );
               monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
                 jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
@@ -228,6 +243,10 @@ const CodeEditor = ({
                 allowNonTsExtensions: true,
                 allowJs: true,
                 isolatedModules: true
+              });
+              monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                noSemanticValidation: true,
+                noSuggestionDiagnostics: true
               });
               monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
                 target: monaco.languages.typescript.ScriptTarget.ES2020,
@@ -306,6 +325,7 @@ const CodeEditor = ({
             height="100%"
             width="100%"
           />
+          )}
         </div>
       </div>
     </div>

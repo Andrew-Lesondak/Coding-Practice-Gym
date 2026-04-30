@@ -10,6 +10,8 @@ import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
 import { getReactDebuggingProgress, useAppStore } from '../store/useAppStore';
 import { updateScheduleGeneric } from '../lib/spacedRepetition';
 
+const REACT_DEBUGGING_TAB_KEY_PREFIX = 'coding-practice-gym-react-debugging-tab';
+
 const tabs = [
   { id: 'brief', label: 'Brief' },
   { id: 'codebase', label: 'Codebase' },
@@ -24,7 +26,7 @@ const ReactDebuggingDetail = () => {
   const progress = useAppStore((state) => state.progress);
   const updateProgress = useAppStore((state) => state.updateReactDebuggingProgress);
   const saveExplanation = useAppStore((state) => state.saveReactDebuggingExplanation);
-  const [activeTab, setActiveTab] = useState('brief');
+  const [activeTab, setActiveTab] = useState(() => 'brief');
   const [activeFile, setActiveFile] = useState('');
   const [search, setSearch] = useState('');
   const [files, setFiles] = useState<Record<string, string>>({});
@@ -46,6 +48,10 @@ const ReactDebuggingDetail = () => {
 
   useEffect(() => {
     if (!problem) return;
+    const savedTab = sessionStorage.getItem(`${REACT_DEBUGGING_TAB_KEY_PREFIX}-${problem.id}`);
+    if (savedTab && tabs.some((tab) => tab.id === savedTab)) {
+      setActiveTab(savedTab);
+    }
     let active = true;
     const baseline = Object.fromEntries(fileList.map((file) => [file.path, file.contents]));
     setFiles(baseline);
@@ -73,6 +79,12 @@ const ReactDebuggingDetail = () => {
       previewDisposeRef.current?.();
     };
   }, [entry?.explanation, fileList, problem]);
+
+
+  useEffect(() => {
+    if (!problem) return;
+    sessionStorage.setItem(`${REACT_DEBUGGING_TAB_KEY_PREFIX}-${problem.id}`, activeTab);
+  }, [activeTab, problem]);
 
   if (!problem || !entry) {
     return (

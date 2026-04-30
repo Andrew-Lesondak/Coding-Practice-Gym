@@ -4960,7 +4960,7 @@ const RAW_RUNTIME_STATE =
     ]],\
     ["monaco-editor", [\
       ["npm:0.52.2", {\
-        "packageLocation": "../../../.yarn/berry/cache/monaco-editor-npm-0.52.2-584d16bfa6-10c0.zip/node_modules/monaco-editor/",\
+        "packageLocation": "./.yarn/unplugged/monaco-editor-npm-0.52.2-584d16bfa6/node_modules/monaco-editor/",\
         "packageDependencies": [\
           ["monaco-editor", "npm:0.52.2"]\
         ],\

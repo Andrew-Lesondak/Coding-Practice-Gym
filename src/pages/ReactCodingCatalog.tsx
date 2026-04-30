@@ -68,8 +68,10 @@ const ReactCodingCatalog = () => {
               <p className="text-xs uppercase tracking-[0.2em] text-mist-300">{problem.difficulty}</p>
               <h3 className="mt-2 font-display text-lg">{problem.title}</h3>
               <p className="mt-2 text-xs text-mist-300">{problem.topics.join(', ')}</p>
-              <p className="mt-3 text-xs text-mist-400">
-                Attempts: {entry.attempts} · Passes: {entry.passes}
+              <p className="mt-3 text-xs">
+                <span className="text-amber-300">Attempts: {entry.attempts}</span>
+                <span className="mx-2 text-mist-500">·</span>
+                <span className="text-emerald-300">Passes: {entry.passes}</span>
               </p>
             </Link>
           );

@@ -94,6 +94,50 @@ const createLogger = () => {
   };
 };
 
+
+const stripInlineReactFcGenerics = (code: string) => {
+  const marker = ': React.FC<';
+  let i = 0;
+  let out = '';
+
+  while (i < code.length) {
+    const idx = code.indexOf(marker, i);
+    if (idx === -1) {
+      out += code.slice(i);
+      break;
+    }
+
+    out += code.slice(i, idx);
+    let j = idx + marker.length;
+    let depth = 1;
+
+    while (j < code.length && depth > 0) {
+      const ch = code[j];
+      if (ch === '<') depth += 1;
+      else if (ch === '>') depth -= 1;
+      j += 1;
+    }
+
+    if (depth !== 0) {
+      out += marker;
+      i = idx + marker.length;
+      continue;
+    }
+
+    while (j < code.length && /\s/.test(code[j])) j += 1;
+    if (code[j] === '=') {
+      out += ' ';
+      i = j;
+      continue;
+    }
+
+    out += code.slice(idx, j);
+    i = j;
+  }
+
+  return out;
+};
+
 const compileToCjs = (code: string) => {
   return transform(code, {
     transforms: ['typescript', 'jsx', 'imports'],
@@ -172,7 +216,7 @@ export const runReactTests = async ({
   timeoutMs = 1500
 }: {
   userCode: string;
-  testCode: string;
+  testCode: string | string[];
   timeoutMs?: number;
 }): Promise<ReactRunResult> => {
   const logger = createLogger();
@@ -191,7 +235,8 @@ export const runReactTests = async ({
       }
     );
     const renderProxy = (...args: any[]) => activeRender(...args);
-    const userJs = compileToCjs(userCode);
+    const normalizedUserCode = stripInlineReactFcGenerics(userCode);
+    const userJs = compileToCjs(normalizedUserCode);
     const userExports = evalCjsModule(userJs, {}, {
       window: undefined,
       document: undefined,
@@ -202,22 +247,26 @@ export const runReactTests = async ({
       WebSocket: undefined,
       expect: undefined
     });
-    const testJs = compileToCjs(testCode);
-    const testExports = evalCjsModule(testJs, userExports, {
-      window: typeof window === 'undefined' ? undefined : window,
-      document: typeof document === 'undefined' ? undefined : document,
-      navigator: typeof navigator === 'undefined' ? undefined : navigator,
-      location: typeof location === 'undefined' ? undefined : location,
-      fetch: undefined,
-      XMLHttpRequest: undefined,
-      WebSocket: undefined,
-      expect,
-      require: createRequire(userExports, screenProxy, renderProxy)
-    });
-
-    const tests: TestCase[] = testExports.tests ?? [];
-    if (!Array.isArray(tests)) {
-      throw new Error('Test module must export a tests array.');
+    const testModules = Array.isArray(testCode) ? testCode : [testCode];
+    const tests: TestCase[] = [];
+    for (const moduleCode of testModules) {
+      const testJs = compileToCjs(moduleCode);
+      const testExports = evalCjsModule(testJs, userExports, {
+        window: typeof window === 'undefined' ? undefined : window,
+        document: typeof document === 'undefined' ? undefined : document,
+        navigator: typeof navigator === 'undefined' ? undefined : navigator,
+        location: typeof location === 'undefined' ? undefined : location,
+        fetch: undefined,
+        XMLHttpRequest: undefined,
+        WebSocket: undefined,
+        expect,
+        require: createRequire(userExports, screenProxy, renderProxy)
+      });
+      const moduleTests: TestCase[] = testExports.tests ?? [];
+      if (!Array.isArray(moduleTests)) {
+        throw new Error('Test module must export a tests array.');
+      }
+      tests.push(...moduleTests);
     }
     let timeoutHit = false;
     for (const test of tests) {

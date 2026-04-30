@@ -59,19 +59,48 @@ import { Counter } from 'user';
 
 export const tests = [
   {
+    name: 'starts at 0 and renders count test id',
+    run: () => {
+      render(React.createElement(Counter));
+      expect(screen.getByTestId('count').textContent).toBe('0');
+    }
+  },
+  {
     name: 'increments and decrements',
     run: () => {
       render(React.createElement(Counter));
-      const count = screen.getByTestId('count');
-      expect(count.textContent).toBe('0');
       fireEvent.click(screen.getByText('+'));
-      expect(count.textContent).toBe('1');
+      expect(screen.getByTestId('count').textContent).toBe('1');
       fireEvent.click(screen.getByText('-'));
-      expect(count.textContent).toBe('0');
+      expect(screen.getByTestId('count').textContent).toBe('0');
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Counter } from 'user';
+
+export const tests = [
+  {
+    name: 'multiple increments accumulate',
+    run: () => {
+      render(React.createElement(Counter));
+      fireEvent.click(screen.getByText('+'));
+      fireEvent.click(screen.getByText('+'));
+      expect(screen.getByTestId('count').textContent).toBe('2');
+    }
+  },
+  {
+    name: 'buttons remain interactive after state updates',
+    run: () => {
+      render(React.createElement(Counter));
+      fireEvent.click(screen.getByText('+'));
+      fireEvent.click(screen.getByText('-'));
+      fireEvent.click(screen.getByText('-'));
+      expect(screen.getByTestId('count').textContent).toBe('-1');
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Not using reducer', 'Mutating state directly'],
@@ -141,17 +170,39 @@ import { PreviousDemo } from 'user';
 
 export const tests = [
   {
-    name: 'tracks previous value',
+    name: 'initial previous value is none',
     run: () => {
       render(React.createElement(PreviousDemo));
+      expect(screen.getByTestId('current').textContent).toBe('0');
       expect(screen.getByTestId('previous').textContent).toBe('none');
+    }
+  },
+  {
+    name: 'tracks previous value after increment',
+    run: () => {
+      render(React.createElement(PreviousDemo));
       fireEvent.click(screen.getByText('Inc'));
       expect(screen.getByTestId('current').textContent).toBe('1');
       expect(screen.getByTestId('previous').textContent).toBe('0');
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { PreviousDemo } from 'user';
+
+export const tests = [
+  {
+    name: 'previous value updates on each increment',
+    run: () => {
+      render(React.createElement(PreviousDemo));
+      fireEvent.click(screen.getByText('Inc'));
+      fireEvent.click(screen.getByText('Inc'));
+      expect(screen.getByTestId('current').textContent).toBe('2');
+      expect(screen.getByTestId('previous').textContent).toBe('1');
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Updating ref before render', 'Missing dependency'],
@@ -180,12 +231,16 @@ export const tests = [
 // TODO(step 2.2 end)
 // TODO(step 2 end)
 
-export const Tabs: React.FC<{ tabs: { label: string; content: string }[] }> = () => {
+type TabsProps = { tabs: { label: string; content: string }[] };
+
+export const Tabs = (_props: TabsProps) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
 
-export const Tabs: React.FC<{ tabs: { label: string; content: string }[] }> = ({ tabs }) => {
+type TabsProps = { tabs: { label: string; content: string }[] };
+
+export const Tabs = ({ tabs }: TabsProps) => {
   const [active, setActive] = React.useState(0);
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'ArrowRight') setActive((prev) => (prev + 1) % tabs.length);
@@ -211,16 +266,63 @@ import { Tabs } from 'user';
 
 export const tests = [
   {
-    name: 'arrow keys move tabs',
+    name: 'renders tabs and first panel by default',
     run: () => {
       render(React.createElement(Tabs, { tabs: [{ label: 'A', content: 'Alpha' }, { label: 'B', content: 'Beta' }] }));
-      expect(screen.getByText('Alpha')).toBeTruthy();
+      const tabEls = screen.getAllByRole('tab');
+      expect(tabEls.length).toBe(2);
+      expect(tabEls[0]?.getAttribute('aria-selected')).toBe('true');
+      expect(tabEls[1]?.getAttribute('aria-selected')).toBe('false');
+      expect(screen.getByRole('tabpanel').textContent).toContain('Alpha');
+    }
+  },
+  {
+    name: 'arrow keys move active tab and panel',
+    run: () => {
+      render(React.createElement(Tabs, { tabs: [{ label: 'A', content: 'Alpha' }, { label: 'B', content: 'Beta' }] }));
       fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
-      expect(screen.getByText('Beta')).toBeTruthy();
+      const tabEls = screen.getAllByRole('tab');
+      expect(tabEls[0]?.getAttribute('aria-selected')).toBe('false');
+      expect(tabEls[1]?.getAttribute('aria-selected')).toBe('true');
+      expect(screen.getByRole('tabpanel').textContent).toContain('Beta');
+    }
+  },
+  {
+    name: 'clicking a tab updates selected state',
+    run: () => {
+      render(React.createElement(Tabs, { tabs: [{ label: 'A', content: 'Alpha' }, { label: 'B', content: 'Beta' }] }));
+      fireEvent.click(screen.getByRole('tab', { name: 'B' }));
+      const tabEls = screen.getAllByRole('tab');
+      expect(tabEls[1]?.getAttribute('aria-selected')).toBe('true');
+      expect(screen.getByRole('tabpanel').textContent).toContain('Beta');
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Tabs } from 'user';
+
+export const tests = [
+  {
+    name: 'arrow left wraps to last tab',
+    run: () => {
+      render(React.createElement(Tabs, { tabs: [{ label: 'A', content: 'Alpha' }, { label: 'B', content: 'Beta' }, { label: 'C', content: 'Gamma' }] }));
+      fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowLeft' });
+      expect(screen.getByRole('tabpanel').textContent).toContain('Gamma');
+      const tabEls = screen.getAllByRole('tab');
+      expect(tabEls[2]?.getAttribute('aria-selected')).toBe('true');
+    }
+  },
+  {
+    name: 'only active tab is selected',
+    run: () => {
+      render(React.createElement(Tabs, { tabs: [{ label: 'A', content: 'Alpha' }, { label: 'B', content: 'Beta' }] }));
+      fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
+      const selected = screen.getAllByRole('tab').filter((el) => el.getAttribute('aria-selected') === 'true');
+      expect(selected.length).toBe(1);
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['No keyboard support', 'Off-by-one index'],
@@ -249,7 +351,7 @@ export const tests = [
 // TODO(step 2.2 end)
 // TODO(step 2 end)
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   return;
 };
 
@@ -264,7 +366,7 @@ const ThemeContext = React.createContext<{ theme: Theme; toggle: () => void }>({
   toggle: () => {}
 });
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setTheme] = React.useState<Theme>('light');
   const toggle = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;
@@ -281,17 +383,44 @@ import { ThemeProvider, ThemeToggle } from 'user';
 
 export const tests = [
   {
-    name: 'toggles theme text',
+    name: 'starts on light theme',
+    run: () => {
+      render(React.createElement(ThemeProvider, null, React.createElement(ThemeToggle)));
+      expect(screen.getByRole('button').textContent).toBe('light');
+    }
+  },
+  {
+    name: 'toggles between light and dark',
     run: () => {
       render(React.createElement(ThemeProvider, null, React.createElement(ThemeToggle)));
       const button = screen.getByRole('button');
-      expect(button.textContent).toBe('light');
       fireEvent.click(button);
       expect(button.textContent).toBe('dark');
+      fireEvent.click(button);
+      expect(button.textContent).toBe('light');
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { ThemeProvider, ThemeToggle } from 'user';
+
+export const tests = [
+  {
+    name: 'provider value is shared across toggles',
+    run: () => {
+      render(
+        React.createElement(
+          ThemeProvider,
+          null,
+          React.createElement('div', null, React.createElement(ThemeToggle), React.createElement(ThemeToggle))
+        )
+      );
+      const buttons = screen.getAllByRole('button');
+      expect(buttons[0]?.textContent).toBe(buttons[1]?.textContent);
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Forgetting provider', 'No toggle function'],
@@ -340,18 +469,41 @@ import { LoginForm } from 'user';
 
 export const tests = [
   {
-    name: 'disables submit until valid',
+    name: 'submit disabled by default',
     run: () => {
       render(React.createElement(LoginForm));
       const button = screen.getByRole('button');
       expect(button.getAttribute('disabled')).toBe('');
+    }
+  },
+  {
+    name: 'enables submit only when email and password are valid',
+    run: () => {
+      render(React.createElement(LoginForm));
+      const button = screen.getByRole('button');
       fireEvent.change(screen.getByLabelText('email'), { target: { value: 'a@b.com' } });
+      expect(button.getAttribute('disabled')).toBe('');
       fireEvent.change(screen.getByLabelText('password'), { target: { value: '123456' } });
       expect(button.getAttribute('disabled')).toBe(null);
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { LoginForm } from 'user';
+
+export const tests = [
+  {
+    name: 'invalid email keeps submit disabled',
+    run: () => {
+      render(React.createElement(LoginForm));
+      const button = screen.getByRole('button');
+      fireEvent.change(screen.getByLabelText('email'), { target: { value: 'ab.com' } });
+      fireEvent.change(screen.getByLabelText('password'), { target: { value: '123456' } });
+      expect(button.getAttribute('disabled')).toBe('');
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Uncontrolled inputs', 'Validation not reactive'],
@@ -398,6 +550,13 @@ import { ModalDemo } from 'user';
 
 export const tests = [
   {
+    name: 'modal is hidden initially',
+    run: () => {
+      render(React.createElement(ModalDemo));
+      expect(screen.queryByRole('dialog')).toBe(null);
+    }
+  },
+  {
     name: 'opens and closes modal',
     run: () => {
       render(React.createElement(ModalDemo));
@@ -408,7 +567,20 @@ export const tests = [
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ModalDemo } from 'user';
+
+export const tests = [
+  {
+    name: 'dialog has aria-modal true when open',
+    run: () => {
+      render(React.createElement(ModalDemo));
+      fireEvent.click(screen.getByText('Open'));
+      expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('true');
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Missing aria-modal', 'Not unmounting modal'],
@@ -429,12 +601,12 @@ export const tests = [
 // TODO(step 1 start)
 // TODO(step 1 end)
 
-export const OptimisticList: React.FC<{ shouldFail?: boolean }> = () => {
+export const OptimisticList = (_props: { shouldFail?: boolean }) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
 
-export const OptimisticList: React.FC<{ shouldFail?: boolean }> = ({ shouldFail }) => {
+export const OptimisticList = ({ shouldFail }: { shouldFail?: boolean }) => {
   const [items, setItems] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const addItem = () => {
@@ -466,9 +638,32 @@ export const tests = [
       fireEvent.click(screen.getByText('Add'));
       expect(screen.getAllByRole('listitem').length).toBe(1);
     }
+  },
+  {
+    name: 'can add more than once',
+    run: () => {
+      render(React.createElement(OptimisticList));
+      fireEvent.click(screen.getByText('Add'));
+      fireEvent.click(screen.getByText('Add'));
+      expect(screen.getAllByRole('listitem').length).toBe(2);
+    }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { OptimisticList } from 'user';
+
+export const tests = [
+  {
+    name: 'rollback path surfaces error and removes optimistic item',
+    run: () => {
+      render(React.createElement(OptimisticList, { shouldFail: true }));
+      fireEvent.click(screen.getByText('Add'));
+      expect(screen.queryAllByRole('listitem').length).toBe(0);
+      expect(screen.getByText('Failed')).toBeTruthy();
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Not rolling back', 'Mutating state'],
@@ -489,12 +684,12 @@ export const tests = [
 // TODO(step 1 start)
 // TODO(step 1 end)
 
-export const MemoList: React.FC<{ items: string[] }> = ({ items }) => {
+export const MemoList = ({ items }: { items: string[] }) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
 
-export const MemoList: React.FC<{ items: string[] }> = ({ items }) => {
+export const MemoList = ({ items }: { items: string[] }) => {
   const list = React.useMemo(() => items.map((item) => item.toUpperCase()), [items]);
   const onClick = React.useCallback(() => {}, []);
   return (
@@ -511,14 +706,36 @@ import { MemoList } from 'user';
 
 export const tests = [
   {
-    name: 'renders list',
+    name: 'renders uppercase items',
     run: () => {
       render(React.createElement(MemoList, { items: ['a', 'b'] }));
-      expect(screen.getAllByRole('listitem').length).toBe(2);
+      const items = screen.getAllByRole('listitem').map((el) => el.textContent);
+      expect(items).toEqual(['A', 'B']);
+    }
+  },
+  {
+    name: 'renders handler button',
+    run: () => {
+      render(React.createElement(MemoList, { items: ['a'] }));
+      expect(screen.getByRole('button', { name: 'noop' })).toBeTruthy();
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { MemoList } from 'user';
+
+export const tests = [
+  {
+    name: 'list updates when items prop changes',
+    run: () => {
+      const view = render(React.createElement(MemoList, { items: ['a'] }));
+      expect(screen.getAllByRole('listitem').map((el) => el.textContent)).toEqual(['A']);
+      view.rerender(React.createElement(MemoList, { items: ['a', 'c'] }));
+      expect(screen.getAllByRole('listitem').map((el) => el.textContent)).toEqual(['A', 'C']);
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Missing dependencies', 'Recreating callbacks'],
@@ -547,12 +764,12 @@ export const tests = [
 // TODO(step 2.2 end)
 // TODO(step 2 end)
 
-export const DebouncedSearch: React.FC<{ onSearch: (value: string) => void }> = ({ onSearch }) => {
+export const DebouncedSearch = ({ onSearch }: { onSearch: (value: string) => void }) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
 
-export const DebouncedSearch: React.FC<{ onSearch: (value: string) => void }> = ({ onSearch }) => {
+export const DebouncedSearch = ({ onSearch }: { onSearch: (value: string) => void }) => {
   const [value, setValue] = React.useState('');
   React.useEffect(() => {
     const id = window.setTimeout(() => onSearch(value), 300);
@@ -567,15 +784,41 @@ import { DebouncedSearch } from 'user';
 
 export const tests = [
   {
-    name: 'renders input',
+    name: 'input is controlled',
     run: () => {
       render(React.createElement(DebouncedSearch, { onSearch: () => {} }));
       fireEvent.change(screen.getByLabelText('search'), { target: { value: 'hi' } });
       expect(screen.getByLabelText('search').getAttribute('value')).toBe('hi');
     }
+  },
+  {
+    name: 'calls onSearch after debounce',
+    run: async () => {
+      const calls: string[] = [];
+      render(React.createElement(DebouncedSearch, { onSearch: (value: string) => calls.push(value) }));
+      fireEvent.change(screen.getByLabelText('search'), { target: { value: 'hello' } });
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      expect(calls[calls.length - 1]).toBe('hello');
+    }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { DebouncedSearch } from 'user';
+
+export const tests = [
+  {
+    name: 'rapid typing emits latest value',
+    run: async () => {
+      const calls: string[] = [];
+      render(React.createElement(DebouncedSearch, { onSearch: (value: string) => calls.push(value) }));
+      fireEvent.change(screen.getByLabelText('search'), { target: { value: 'a' } });
+      fireEvent.change(screen.getByLabelText('search'), { target: { value: 'ab' } });
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      expect(calls[calls.length - 1]).toBe('ab');
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Missing cleanup', 'Stale value'],
@@ -618,7 +861,14 @@ import { InfiniteList } from 'user';
 
 export const tests = [
   {
-    name: 'appends items',
+    name: 'renders initial items',
+    run: () => {
+      render(React.createElement(InfiniteList));
+      expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(2);
+    }
+  },
+  {
+    name: 'load more appends items',
     run: () => {
       render(React.createElement(InfiniteList));
       const before = screen.getAllByRole('listitem').length;
@@ -628,7 +878,22 @@ export const tests = [
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { InfiniteList } from 'user';
+
+export const tests = [
+  {
+    name: 'multiple load more clicks keep appending',
+    run: () => {
+      render(React.createElement(InfiniteList));
+      const before = screen.getAllByRole('listitem').length;
+      fireEvent.click(screen.getByText('Load more'));
+      fireEvent.click(screen.getByText('Load more'));
+      expect(screen.getAllByRole('listitem').length).toBe(before + 2);
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Replacing list instead of appending'],
@@ -678,15 +943,40 @@ import { AsyncToggle } from 'user';
 
 export const tests = [
   {
-    name: 'renders toggle',
+    name: 'starts off',
     run: () => {
       render(React.createElement(AsyncToggle));
       expect(screen.getByText('Off')).toBeTruthy();
+    }
+  },
+  {
+    name: 'shows loading then toggles on',
+    run: async () => {
+      render(React.createElement(AsyncToggle));
       fireEvent.click(screen.getByText('Toggle'));
+      expect(screen.getByText('Loading')).toBeTruthy();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(screen.getByText('On')).toBeTruthy();
     }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { AsyncToggle } from 'user';
+
+export const tests = [
+  {
+    name: 'second toggle flips back off',
+    run: async () => {
+      render(React.createElement(AsyncToggle));
+      fireEvent.click(screen.getByText('Toggle'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      fireEvent.click(screen.getByText('Toggle'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(screen.getByText('Off')).toBeTruthy();
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Not resetting loading', 'Missing cleanup'],
@@ -711,12 +1001,12 @@ export const tests = [
 // TODO(step 2 start)
 // TODO(step 2 end)
 
-export const AsyncList: React.FC<{ fetchItems: () => Promise<string[]> }> = ({ fetchItems }) => {
+export const AsyncList = ({ fetchItems }: { fetchItems: () => Promise<string[]> }) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
 
-export const AsyncList: React.FC<{ fetchItems: () => Promise<string[]> }> = ({ fetchItems }) => {
+export const AsyncList = ({ fetchItems }: { fetchItems: () => Promise<string[]> }) => {
   const [items, setItems] = React.useState<string[]>([]);
   React.useEffect(() => {
     fetchItems().then(setItems);
@@ -735,9 +1025,36 @@ export const tests = [
       render(React.createElement(AsyncList, { fetchItems: async () => ['a'] }));
       expect(screen.getByRole('list')).toBeTruthy();
     }
+  },
+  {
+    name: 'fetches and renders items',
+    run: async () => {
+      render(React.createElement(AsyncList, { fetchItems: async () => ['a', 'b'] }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.getAllByRole('listitem').length).toBe(2);
+    }
   }
 ];`,
-      hidden: `export const tests = [];`
+      hidden: `import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { AsyncList } from 'user';
+
+export const tests = [
+  {
+    name: 'calls fetch exactly once on mount with stable prop',
+    run: async () => {
+      let calls = 0;
+      const fetchItems = async () => {
+        calls += 1;
+        return ['x'];
+      };
+      render(React.createElement(AsyncList, { fetchItems }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(calls).toBe(1);
+      expect(screen.getAllByRole('listitem').length).toBe(1);
+    }
+  }
+];`
     },
     metadata: {
       commonPitfalls: ['Missing dependencies', 'Not handling promises'],

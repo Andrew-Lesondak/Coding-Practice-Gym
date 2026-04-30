@@ -14,9 +14,10 @@ import { updateScheduleGeneric } from '../lib/spacedRepetition';
 import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
 import { StepStatus } from '../types/progress';
 
+const REACT_CODING_TAB_KEY_PREFIX = 'coding-practice-gym-react-coding-tab';
+
 const tabs = [
   { id: 'prompt', label: 'Prompt' },
-  { id: 'plan', label: 'Plan' },
   { id: 'solve', label: 'Solve' },
   { id: 'review', label: 'Review' }
 ];
@@ -82,6 +83,48 @@ const applyHintLevelToStub = (code: string, level: number) => {
   return applyHintLevel(filtered.join('\n'), level);
 };
 
+
+const moveStepCommentBlockIntoComponent = (code: string) => {
+  const lines = code.split('\n');
+  const isStepComment = (line: string) =>
+    /^\s*\/\/\s*(Step\s+\d+(?:\.\d+)?|TODO\(step\s+.*\)|HINT\(level\s+\d+\):)/.test(line);
+  const isSkippableBetweenBlockAndComponent = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    if (/^type\s+\w+\s*=/.test(trimmed)) return true;
+    if (/^(export\s+)?interface\s+\w+/.test(trimmed)) return true;
+    return false;
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const decl = lines[i].match(/^\s*export\s+const\s+\w+\s*(?::[^=]+)?=\s*\([^)]*\)\s*=>\s*\{\s*$/);
+    if (!decl) continue;
+
+    let j = i - 1;
+    while (j >= 0 && isSkippableBetweenBlockAndComponent(lines[j])) j -= 1;
+
+    let end = j;
+    while (end >= 0 && lines[end].trim() === '') end -= 1;
+    let start = end;
+    while (start >= 0 && isStepComment(lines[start])) start -= 1;
+    start += 1;
+
+    if (start > end) continue;
+
+    const block = lines.slice(start, end + 1);
+    if (!block.some((line) => /TODO\(step\s+/.test(line))) continue;
+
+    const before = lines.slice(0, start);
+    const between = lines.slice(end + 1, i + 1);
+    const after = lines.slice(i + 1);
+
+    const moved = [...before, ...between, ...block, ...after];
+    return moved.join('\n');
+  }
+
+  return code;
+};
+
 const stripHintLines = (code: string) => {
   return code
     .split('\n')
@@ -124,7 +167,7 @@ const ReactCodingDetail = () => {
   const { id } = useParams();
   const problems = useReactCodingProblems();
   const problem = problems.find((item) => item.id === id);
-  const [activeTab, setActiveTab] = useState('prompt');
+  const [activeTab, setActiveTab] = useState(() => 'prompt');
   const [code, setCode] = useState('');
   const [runResult, setRunResult] = useState<ReactRunResult | undefined>();
   const [completion, setCompletion] = useState<Record<number, StepStatus>>({});
@@ -165,22 +208,24 @@ const ReactCodingDetail = () => {
 
   useEffect(() => {
     if (!problem) return;
+    const savedTab = sessionStorage.getItem(`${REACT_CODING_TAB_KEY_PREFIX}-${problem.id}`);
+    if (savedTab && tabs.some((tab) => tab.id === savedTab)) {
+      setActiveTab(savedTab);
+    }
     let active = true;
     const storageKey = `react-gym-code-${problem.id}`;
-    const stubWithHints = applyHintLevelToStub(updateHintsInCode(problem.guidedStubTsx, stepHints), settings.hintLevel);
     getDraft(storageKey).then((savedDraft) => {
       if (!active) return;
       const saved = savedDraft?.value ?? null;
-      const isEdited = saved !== null && saved !== problem.guidedStubTsx;
-      const baseCode = saved ?? stubWithHints;
-      const editedWithHints = isEdited && saved ? updateHintsInCode(saved, stepHints) : baseCode;
-      const nextCode = isEdited && saved
-        ? applyHintLevelToStub(editedWithHints, settings.hintLevel)
-        : baseCode;
+      const savedBase = saved ? stripHintLines(saved) : null;
+      const baseSource = savedBase ?? problem.guidedStubTsx;
+      const withHints = updateHintsInCode(baseSource, stepHints);
+      const nextCodeRaw = applyHintLevelToStub(withHints, settings.hintLevel);
+      const nextCode = moveStepCommentBlockIntoComponent(nextCodeRaw);
       setCode(nextCode);
       prevCodeRef.current = nextCode;
       if (!saved) {
-        void setDraft(storageKey, nextCode);
+        void setDraft(storageKey, stripHintLines(nextCode));
       }
     });
     if (problemProgress?.explanation) {
@@ -196,6 +241,12 @@ const ReactCodingDetail = () => {
       active = false;
     };
   }, [problem, problemProgress?.explanation, settings.hintLevel, stepHints]);
+
+
+  useEffect(() => {
+    if (!problem) return;
+    sessionStorage.setItem(`${REACT_CODING_TAB_KEY_PREFIX}-${problem.id}`, activeTab);
+  }, [activeTab, problem]);
 
   useEffect(() => {
     if (!problem) return;
@@ -229,12 +280,9 @@ const ReactCodingDetail = () => {
       attempts: problemProgress.attempts + 1,
       lastAttemptedAt: new Date().toISOString()
     });
-    const testCode = submit
-      ? `${problem.tests.visible}\n${problem.tests.hidden}`
-      : problem.tests.visible;
     const result = await runReactTests({
       userCode: code,
-      testCode,
+      testCode: submit ? [problem.tests.visible, problem.tests.hidden] : problem.tests.visible,
       timeoutMs: 1500
     });
     setRunResult(result);
@@ -265,7 +313,7 @@ const ReactCodingDetail = () => {
   const onCodeChange = (next: string) => {
     setCode(next);
     prevCodeRef.current = next;
-    void setDraft(`react-gym-code-${problem.id}`, next);
+    void setDraft(`react-gym-code-${problem.id}`, stripHintLines(next));
   };
 
   return (
@@ -324,11 +372,6 @@ const ReactCodingDetail = () => {
         </section>
       )}
 
-      {activeTab === 'plan' && (
-        <section className="glass rounded-2xl p-6">
-          <p className="text-sm text-mist-200">Use the guided steps in the Solve tab.</p>
-        </section>
-      )}
 
       {activeTab === 'solve' && (
         <section className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">

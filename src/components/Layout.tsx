@@ -14,6 +14,8 @@ type NavItem = {
   label: string;
 };
 
+const SETTINGS_RETURN_KEY = 'coding-practice-gym-settings-return';
+
 const Layout = ({ children }: { children: ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -81,7 +83,19 @@ const Layout = ({ children }: { children: ReactNode }) => {
         >
           <nav className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-ink-900/85 p-3">
             {navItems.map((item) => (
-              <NavLink key={item.to} className={navLink} to={item.to}>
+              <NavLink
+                key={item.to}
+                className={navLink}
+                to={item.to}
+                onClick={() => {
+                  if (item.to === '/settings' && location.pathname !== '/settings') {
+                    sessionStorage.setItem(
+                      SETTINGS_RETURN_KEY,
+                      `${location.pathname}${location.search}${location.hash}`
+                    );
+                  }
+                }}
+              >
                 {item.label}
               </NavLink>
             ))}

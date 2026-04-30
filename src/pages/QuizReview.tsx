@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getQuizSession, saveQuizSession } from '../lib/quizStorage';
 import { useQuizQuestions } from '../lib/useQuizQuestions';
 import QuizSessionSummary from '../components/QuizSessionSummary';
+import { formatQuizAnswer, formatQuizCorrectAnswer, getQuizSelectionFeedback } from '../lib/quizFeedback';
 import { QuizQuestion } from '../types/quiz';
 
 const QuizReview = () => {
@@ -92,11 +93,16 @@ const QuizReview = () => {
                 <p className="text-xs uppercase tracking-[0.2em] text-mist-400">{question.subtopic}</p>
                 <p className="mt-2 text-mist-100">{question.promptMarkdown}</p>
                 <p className="mt-2 text-xs text-mist-300">
-                  Your answer: {JSON.stringify(session.answers[question.id])}
+                  Your answer: {formatQuizAnswer(question, session.answers[question.id])}
                 </p>
                 <p className="text-xs text-mist-300">
-                  Correct: {JSON.stringify(question.correct)}
+                  Correct: {formatQuizCorrectAnswer(question)}
                 </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-mist-200">
+                  {getQuizSelectionFeedback(question, session.answers[question.id]).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
                 <p className="mt-2 text-xs text-mist-200">{question.explanationMarkdown}</p>
               </div>
             ))}
