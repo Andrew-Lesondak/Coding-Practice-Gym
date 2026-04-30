@@ -1,5 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import Editor from '@monaco-editor/react';
+import Editor, { loader } from '@monaco-editor/react';
+import * as Monaco from 'monaco-editor';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+
+loader.config({ monaco: Monaco });
+
+const monacoEnv = globalThis as typeof globalThis & {
+  MonacoEnvironment?: { getWorker: (_moduleId: string, label: string) => Worker };
+};
+
+if (!monacoEnv.MonacoEnvironment) {
+  monacoEnv.MonacoEnvironment = {
+    getWorker: (_moduleId: string, label: string) => {
+      if (label === 'typescript' || label === 'javascript') {
+        return new tsWorker();
+      }
+      return new editorWorker();
+    }
+  };
+}
 
 const CodeEditor = ({
   value,

@@ -24,7 +24,7 @@ const DebuggingRunResult = ({
         </div>
       ))}
       {((preview?.logs.length ?? 0) > 0 || (result?.logs.length ?? 0) > 0) && (
-        <details className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
+        <details open className="rounded-xl border border-white/10 p-3 text-xs text-mist-200">
           <summary className="cursor-pointer font-semibold text-mist-100">Console output</summary>
           <div className="mt-2 space-y-1">
             {[...(preview?.logs ?? []), ...(result?.logs ?? [])].map((line, index) => (
