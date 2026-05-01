@@ -16,6 +16,8 @@ export const reactCodingProblems: ReactCodingProblem[] = [
 // TODO(step 1 start)
 // TODO(step 1 end)
 
+
+export const Counter: React.FC = () => {
 // Step 2: Build the Counter component using useReducer.
 // TODO(step 2 start)
 // TODO(step 2.1 start)
@@ -23,8 +25,6 @@ export const reactCodingProblems: ReactCodingProblem[] = [
 // TODO(step 2.2 start)
 // TODO(step 2.2 end)
 // TODO(step 2 end)
-
-export const Counter: React.FC = () => {
   return (
     <div>
       <p data-testid="count">0</p>
@@ -117,6 +117,8 @@ export const tests = [
     constraints: ['No external libraries'],
     guidedStubTsx: `import React from 'react';
 
+
+export const usePrevious = (value: number) => {
 // Step 1: Implement usePrevious using refs and effect.
 // TODO(step 1 start)
 // TODO(step 1.1 start)
@@ -124,8 +126,6 @@ export const tests = [
 // TODO(step 1.2 start)
 // TODO(step 1.2 end)
 // TODO(step 1 end)
-
-export const usePrevious = (value: number) => {
   return;
 };
 
@@ -223,6 +223,10 @@ export const tests = [
 // TODO(step 1 start)
 // TODO(step 1 end)
 
+
+type TabsProps = { tabs: { label: string; content: string }[] };
+
+export const Tabs = (_props: TabsProps) => {
 // Step 2: Render buttons and handle arrow keys.
 // TODO(step 2 start)
 // TODO(step 2.1 start)
@@ -230,10 +234,6 @@ export const tests = [
 // TODO(step 2.2 start)
 // TODO(step 2.2 end)
 // TODO(step 2 end)
-
-type TabsProps = { tabs: { label: string; content: string }[] };
-
-export const Tabs = (_props: TabsProps) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
@@ -343,6 +343,8 @@ export const tests = [
 // TODO(step 1 start)
 // TODO(step 1 end)
 
+
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 // Step 2: Implement provider and toggle.
 // TODO(step 2 start)
 // TODO(step 2.1 start)
@@ -350,8 +352,6 @@ export const tests = [
 // TODO(step 2.2 start)
 // TODO(step 2.2 end)
 // TODO(step 2 end)
-
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   return;
 };
 
@@ -441,11 +441,11 @@ export const tests = [
 // TODO(step 1 start)
 // TODO(step 1 end)
 
+
+export const LoginForm: React.FC = () => {
 // Step 2: Compute validity.
 // TODO(step 2 start)
 // TODO(step 2 end)
-
-export const LoginForm: React.FC = () => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
@@ -520,11 +520,11 @@ export const tests = [
     constraints: ['No portals required'],
     guidedStubTsx: `import React from 'react';
 
+
+export const ModalDemo: React.FC = () => {
 // Step 1: Track open state.
 // TODO(step 1 start)
 // TODO(step 1 end)
-
-export const ModalDemo: React.FC = () => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
@@ -597,11 +597,11 @@ export const tests = [
     constraints: ['Simulate failure with prop'],
     guidedStubTsx: `import React from 'react';
 
+
+export const OptimisticList = (_props: { shouldFail?: boolean }) => {
 // Step 1: Track items and error state.
 // TODO(step 1 start)
 // TODO(step 1 end)
-
-export const OptimisticList = (_props: { shouldFail?: boolean }) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
@@ -680,11 +680,11 @@ export const tests = [
     constraints: ['Simple list'],
     guidedStubTsx: `import React from 'react';
 
+
+export const MemoList = ({ items }: { items: string[] }) => {
 // Step 1: Create memoized list and handler.
 // TODO(step 1 start)
 // TODO(step 1 end)
-
-export const MemoList = ({ items }: { items: string[] }) => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
@@ -835,11 +835,11 @@ export const tests = [
     constraints: ['No observers required'],
     guidedStubTsx: `import React from 'react';
 
+
+export const InfiniteList: React.FC = () => {
 // Step 1: Track items.
 // TODO(step 1 start)
 // TODO(step 1 end)
-
-export const InfiniteList: React.FC = () => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';
@@ -910,11 +910,11 @@ export const tests = [
     constraints: ['Use setTimeout'],
     guidedStubTsx: `import React from 'react';
 
+
+export const AsyncToggle: React.FC = () => {
 // Step 1: Track loading and status.
 // TODO(step 1 start)
 // TODO(step 1 end)
-
-export const AsyncToggle: React.FC = () => {
   return;
 };`,
     referenceSolutionTsx: `import React from 'react';

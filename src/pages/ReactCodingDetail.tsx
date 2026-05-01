@@ -5,6 +5,7 @@ import Tabs from '../components/Tabs';
 import StepList from '../components/StepList';
 import CodeEditor from '../components/CodeEditor';
 import ReactTestResults from '../components/ReactTestResults';
+import SolveTimerCard from '../components/SolveTimerCard';
 import { useReactCodingProblems } from '../lib/useReactCodingProblems';
 import { computeStepCompletion, getFirstIncompleteStep, parseSteps, parseTodoRegions } from '../lib/guidedStub';
 import { getReactStepHints } from '../lib/reactStepHints';
@@ -176,6 +177,7 @@ const ReactCodingDetail = () => {
   const [conceptText, setConceptText] = useState('');
   const [edgeText, setEdgeText] = useState('');
   const [reviewText, setReviewText] = useState('');
+  const [runOutputExpanded, setRunOutputExpanded] = useState(true);
   const [difficultyRating, setDifficultyRating] = useState(3);
   const [confidenceRating, setConfidenceRating] = useState(3);
   const prevCodeRef = useRef('');
@@ -276,6 +278,7 @@ const ReactCodingDetail = () => {
   const runTests = async (submit: boolean) => {
     setIsRunning(true);
     setRunResult(undefined);
+    setRunOutputExpanded(true);
     updateProgress(problem.id, {
       attempts: problemProgress.attempts + 1,
       lastAttemptedAt: new Date().toISOString()
@@ -374,7 +377,7 @@ const ReactCodingDetail = () => {
 
 
       {activeTab === 'solve' && (
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
+        <section className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_25vw]">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -398,15 +401,26 @@ const ReactCodingDetail = () => {
                 </button>
               </div>
             </div>
-            <CodeEditor value={code} language="typescript" onChange={onCodeChange} path={`inmemory://react-coding/${problem.id}.tsx`} />
             <div className="rounded-2xl border border-white/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Run output</p>
-              <div className="mt-3">
-                <ReactTestResults result={runResult} />
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-[0.2em] text-mist-300">Run output</p>
+                <button
+                  className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                  onClick={() => setRunOutputExpanded((prev) => !prev)}
+                >
+                  {runOutputExpanded ? 'Hide' : 'Show'}
+                </button>
               </div>
+              {runOutputExpanded && (
+                <div className="mt-3">
+                  <ReactTestResults result={runResult} />
+                </div>
+              )}
             </div>
+            <CodeEditor value={code} language="typescript" onChange={onCodeChange} path={`inmemory://react-coding/${problem.id}.tsx`} />
           </div>
           <div className="space-y-4">
+            <SolveTimerCard />
             <div className="glass rounded-2xl p-5">
               <h3 className="font-display text-lg">Steps</h3>
               <p className="text-xs text-mist-300">Active step: {activeStep}</p>

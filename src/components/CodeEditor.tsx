@@ -186,7 +186,7 @@ const CodeEditor = ({
       </div>
       <div
         ref={containerRef}
-        className="h-[700px] resize-y overflow-auto rounded-2xl border border-white/10 pr-3 pb-3"
+        className="h-[80vh] resize-y overflow-auto rounded-2xl border border-white/10 pr-3 pb-3"
         style={{ minHeight: 360 }}
       >
         <div className="h-full w-full">
@@ -266,6 +266,39 @@ const CodeEditor = ({
             editorRef.current = editor;
             hasMountedRef.current = true;
             editor.layout();
+
+            const wheelBridge = (event: WheelEvent) => {
+              const domNode = editor.getDomNode();
+              if (!domNode || !domNode.contains(event.target as Node)) return;
+
+              const scrollTop = editor.getScrollTop();
+              const contentHeight = editor.getScrollHeight();
+              const layout = editor.getLayoutInfo();
+              const viewportHeight = layout.height;
+              const maxTop = Math.max(0, contentHeight - viewportHeight);
+
+              const atTop = scrollTop <= 0;
+              const atBottom = scrollTop >= maxTop - 1;
+              const wantsUp = event.deltaY < 0;
+              const wantsDown = event.deltaY > 0;
+
+              if ((atTop && wantsUp) || (atBottom && wantsDown)) {
+                window.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' });
+              }
+
+              // Horizontal bridge for trackpads when editor is at left/right edges.
+              const scrollLeft = editor.getScrollLeft();
+              const maxLeft = Math.max(0, editor.getScrollWidth() - layout.width);
+              const atLeft = scrollLeft <= 0;
+              const atRight = scrollLeft >= maxLeft - 1;
+              const wantsLeft = event.deltaX < 0;
+              const wantsRight = event.deltaX > 0;
+              if ((atLeft && wantsLeft) || (atRight && wantsRight)) {
+                window.scrollBy({ top: 0, left: event.deltaX, behavior: 'auto' });
+              }
+            };
+
+            window.addEventListener('wheel', wheelBridge, { passive: true, capture: true });
             const model = editor.getModel();
             if (model) {
               monaco.editor.setModelLanguage(model, language);
@@ -311,6 +344,10 @@ const CodeEditor = ({
                 true
               );
             }
+
+            editor.onDidDispose(() => {
+              window.removeEventListener('wheel', wheelBridge, true);
+            });
           }}
             options={{
               renderValidationDecorations: suppressDiagnostics ? 'off' : 'on',
@@ -320,6 +357,10 @@ const CodeEditor = ({
               padding: { top: 16, bottom: 16 },
               wordWrap: 'on',
               fixedOverflowWidgets: true,
+              // Let wheel events bubble so page scroll can continue when editor hits bounds.
+              scrollbar: {
+                alwaysConsumeMouseWheel: false
+              },
               readOnly
             }}
             height="100%"

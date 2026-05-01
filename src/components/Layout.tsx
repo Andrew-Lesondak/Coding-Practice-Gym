@@ -107,7 +107,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-screen-2xl px-6 py-8">{children}</main>
+      <main className="w-full px-4 py-8 lg:px-6">{children}</main>
     </div>
   );
 };

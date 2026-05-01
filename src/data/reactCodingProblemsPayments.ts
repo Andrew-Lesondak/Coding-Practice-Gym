@@ -16,39 +16,7 @@ export const paymentReactCodingProblems: ReactCodingProblem[] = [
       'Call onSuccess/onError callbacks appropriately'
     ],
     constraints: ['No external network calls', 'No external libraries', 'Keep container instances independent'],
-    guidedStubTsx: `// Step 1: Validate incoming config.
-// TODO(step 1 start)
-// TODO(step 1 end)
-
-// Step 2: Resolve target container and guard missing container.
-// TODO(step 2 start)
-// TODO(step 2 end)
-
-// Step 3: Prevent duplicate render per container.
-// TODO(step 3 start)
-// TODO(step 3 end)
-
-// Step 4: Render button and status node.
-// TODO(step 4 start)
-// TODO(step 4 end)
-
-// Step 5: Handle click transitions and in-flight guard.
-// TODO(step 5 start)
-// TODO(step 5 end)
-
-// Step 6: Simulate async checkout and resolve success or error.
-// TODO(step 6 start)
-// TODO(step 6 end)
-
-// Step 7: Call success/error callbacks safely.
-// TODO(step 7 start)
-// TODO(step 7 end)
-
-// Step 8: Expose cleanup for container instance.
-// TODO(step 8 start)
-// TODO(step 8 end)
-
-type PaymentConfig = {
+    guidedStubTsx: `type PaymentConfig = {
   merchantId: string;
   containerId: string;
   amount: number;
@@ -60,6 +28,37 @@ type PaymentInstance = { cleanup: () => void };
 
 export const PaymentSDK = {
   init: (_config: PaymentConfig): PaymentInstance => {
+    // Step 1: Validate incoming config.
+    // TODO(step 1 start)
+    // TODO(step 1 end)
+
+    // Step 2: Resolve target container and guard missing container.
+    // TODO(step 2 start)
+    // TODO(step 2 end)
+
+    // Step 3: Prevent duplicate render per container.
+    // TODO(step 3 start)
+    // TODO(step 3 end)
+
+    // Step 4: Render button and status node.
+    // TODO(step 4 start)
+    // TODO(step 4 end)
+
+    // Step 5: Handle click transitions and in-flight guard.
+    // TODO(step 5 start)
+    // TODO(step 5 end)
+
+    // Step 6: Simulate async checkout and resolve success or error.
+    // TODO(step 6 start)
+    // TODO(step 6 end)
+
+    // Step 7: Call success/error callbacks safely.
+    // TODO(step 7 start)
+    // TODO(step 7 end)
+
+    // Step 8: Expose cleanup for container instance.
+    // TODO(step 8 start)
+    // TODO(step 8 end)
     return { cleanup: () => {} };
   }
 };
@@ -440,13 +439,13 @@ export const tests = [
 // TODO(step 5 start)
 // TODO(step 5 end)
 
-// Step 6: Cleanup pending work.
-// TODO(step 6 start)
-// TODO(step 6 end)
 
 type Props = { searchApi: (query: string) => Promise<string[]>; debounceMs?: number };
 
 export const SearchCheckout: React.FC<Props> = () => {
+// Step 6: Cleanup pending work.
+// TODO(step 6 start)
+// TODO(step 6 end)
   return (
     <section>
       <input aria-label="search" />
@@ -811,11 +810,11 @@ export const tests = [
 // TODO(step 5 start)
 // TODO(step 5 end)
 
+
+export const CheckoutFrameHost = (_props: { origin: string }) => {
 // Step 6: Cleanup listener on unmount.
 // TODO(step 6 start)
 // TODO(step 6 end)
-
-export const CheckoutFrameHost = (_props: { origin: string }) => {
   return (
     <div>
       <iframe title="checkout-frame" />
@@ -957,11 +956,11 @@ export const tests = [
 // TODO(step 5 start)
 // TODO(step 5 end)
 
+
+export const PaymentMessage = (_props: { config?: { headline?: string; subtext?: string; cta?: string; theme?: string } }) => {
 // Step 6: Render fallback for invalid config.
 // TODO(step 6 start)
 // TODO(step 6 end)
-
-export const PaymentMessage = (_props: { config?: { headline?: string; subtext?: string; cta?: string; theme?: string } }) => {
   return (
     <section data-testid="message" data-theme="light">
       <h2></h2>
@@ -1068,14 +1067,14 @@ export const tests = [
 // TODO(step 3 start)
 // TODO(step 3 end)
 
-// Step 4: Render close behavior and keep state stable.
-// TODO(step 4 start)
-// TODO(step 4 end)
 
 type ModalProps = { amount: number; onClose: () => void };
 type Props = { amount: number; loadModal: () => Promise<{ default: React.ComponentType<ModalProps> }> };
 
 export const LazyCheckoutHost: React.FC<Props> = () => {
+// Step 4: Render close behavior and keep state stable.
+// TODO(step 4 start)
+// TODO(step 4 end)
   return (
     <div>
       <button>Open checkout</button>
@@ -1199,32 +1198,31 @@ export const tests = [
     promptMarkdown: 'Measure interaction latency from click to async completion and log a metric.',
     requirements: ['Capture start/end time', 'Run async work', 'Log metric once', 'Handle failures'],
     constraints: ['Use injected now() and logger for deterministic tests'],
-    guidedStubTsx: `// Step 1: Capture start time.
-// TODO(step 1 start)
-// TODO(step 1 end)
-
-// Step 2: Run async work and wait for completion.
-// TODO(step 2 start)
-// TODO(step 2 end)
-
-// Step 3: Capture end time and compute duration.
-// TODO(step 3 start)
-// TODO(step 3 end)
-
-// Step 4: Log metric once per interaction.
-// TODO(step 4 start)
-// TODO(step 4 end)
-
-// Step 5: Handle rejection path.
-// TODO(step 5 start)
-// TODO(step 5 end)
-
-export const trackInteraction = async (
+    guidedStubTsx: `export const trackInteraction = async (
   _name: string,
   _work: () => Promise<string>,
   _log: (name: string, duration: number, status: 'success' | 'error') => void,
   _now: () => number = () => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 ) => {
+  // Step 1: Capture start time.
+  // TODO(step 1 start)
+  // TODO(step 1 end)
+
+  // Step 2: Run async work and wait for completion.
+  // TODO(step 2 start)
+  // TODO(step 2 end)
+
+  // Step 3: Capture end time and compute duration.
+  // TODO(step 3 start)
+  // TODO(step 3 end)
+
+  // Step 4: Log metric once per interaction.
+  // TODO(step 4 start)
+  // TODO(step 4 end)
+
+  // Step 5: Handle rejection path.
+  // TODO(step 5 start)
+  // TODO(step 5 end)
   return;
 };`,
     referenceSolutionTsx: `export const trackInteraction = async (
@@ -1326,27 +1324,26 @@ export const tests = [
     promptMarkdown: 'Implement `loadScript(src)` that returns a shared promise per src and supports timeout + retry after failure.',
     requirements: ['Cache by src', 'Return same promise for duplicate calls', 'Resolve on load', 'Reject on error or timeout', 'Clear failed cache'],
     constraints: ['No external libraries'],
-    guidedStubTsx: `// Step 1: Add src->promise cache.
-// TODO(step 1 start)
-// TODO(step 1 end)
+    guidedStubTsx: `export const loadScript = (_src: string, _timeoutMs = 1000) => {
+  // Step 1: Add src->promise cache.
+  // TODO(step 1 start)
+  // TODO(step 1 end)
 
-// Step 2: Return cached promise for duplicate src.
-// TODO(step 2 start)
-// TODO(step 2 end)
+  // Step 2: Return cached promise for duplicate src.
+  // TODO(step 2 start)
+  // TODO(step 2 end)
 
-// Step 3: Create script element and handlers.
-// TODO(step 3 start)
-// TODO(step 3 end)
+  // Step 3: Create script element and handlers.
+  // TODO(step 3 start)
+  // TODO(step 3 end)
 
-// Step 4: Handle timeout and cleanup.
-// TODO(step 4 start)
-// TODO(step 4 end)
+  // Step 4: Handle timeout and cleanup.
+  // TODO(step 4 start)
+  // TODO(step 4 end)
 
-// Step 5: Remove failed cache entry for retry.
-// TODO(step 5 start)
-// TODO(step 5 end)
-
-export const loadScript = (_src: string, _timeoutMs = 1000) => {
+  // Step 5: Remove failed cache entry for retry.
+  // TODO(step 5 start)
+  // TODO(step 5 end)
   return;
 };`,
     referenceSolutionTsx: `const cache = new Map<string, Promise<void>>();
@@ -1618,36 +1615,35 @@ export const tests = [
     promptMarkdown: 'Implement a tiny event emitter with on/off/once/emit and resilient handler iteration.',
     requirements: ['Multiple handlers', 'once support', 'off safety', 'handler errors isolated'],
     constraints: ['No external libs'],
-    guidedStubTsx: `// Step 1: Store handlers by event.
-// TODO(step 1 start)
-// TODO(step 1 end)
+    guidedStubTsx: `export class MiniEmitter {
+  // Step 1: Store handlers by event.
+  // TODO(step 1 start)
+  // TODO(step 1 end)
 
-// Step 2: Implement on and return unsubscribe.
-// TODO(step 2 start)
-// TODO(step 2 end)
-
-// Step 3: Implement off safely.
-// TODO(step 3 start)
-// TODO(step 3 end)
-
-// Step 4: Implement emit with defensive iteration.
-// TODO(step 4 start)
-// TODO(step 4 end)
-
-// Step 5: Guard handler errors.
-// TODO(step 5 start)
-// TODO(step 5 end)
-
-// Step 6: Implement once.
-// TODO(step 6 start)
-// TODO(step 6 end)
-
-export class MiniEmitter {
+  // Step 2: Implement on and return unsubscribe.
+  // TODO(step 2 start)
+  // TODO(step 2 end)
   on(_event: string, _handler: (payload: unknown) => void) {
     return () => {};
   }
+
+  // Step 3: Implement off safely.
+  // TODO(step 3 start)
+  // TODO(step 3 end)
   off(_event: string, _handler: (payload: unknown) => void) {}
+
+  // Step 4: Implement emit with defensive iteration.
+  // TODO(step 4 start)
+  // TODO(step 4 end)
+
+  // Step 5: Guard handler errors.
+  // TODO(step 5 start)
+  // TODO(step 5 end)
   emit(_event: string, _payload: unknown) {}
+
+  // Step 6: Implement once.
+  // TODO(step 6 start)
+  // TODO(step 6 end)
   once(_event: string, _handler: (payload: unknown) => void) {
     return () => {};
   }
@@ -1914,13 +1910,13 @@ export const tests = [
 // TODO(step 4 start)
 // TODO(step 4 end)
 
-// Step 5: Implement keyboard navigation.
-// TODO(step 5 start)
-// TODO(step 5 end)
 
 type Plan = { id: string; label: string; available: boolean };
 
 export const PaymentOptionSelector = (_props: { plans: Plan[] }) => {
+// Step 5: Implement keyboard navigation.
+// TODO(step 5 start)
+// TODO(step 5 end)
   return (
     <section>
       <div role="radiogroup"></div>
@@ -2079,13 +2075,13 @@ export const tests = [
 // TODO(step 4 start)
 // TODO(step 4 end)
 
-// Step 5: Render empty state.
-// TODO(step 5 start)
-// TODO(step 5 end)
 
 type Merchant = { id: string; name: string; status: 'active' | 'paused'; volume: number };
 
 export const MerchantTable = (_props: { merchants: Merchant[] }) => {
+// Step 5: Render empty state.
+// TODO(step 5 start)
+// TODO(step 5 end)
   return (
     <section>
       <input aria-label="search merchants" />

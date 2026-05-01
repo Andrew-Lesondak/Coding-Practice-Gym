@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import Tabs from '../components/Tabs';
 import CodeEditor from '../components/CodeEditor';
 import DebuggingRunResult from '../components/DebuggingRunResult';
+import SolveTimerCard from '../components/SolveTimerCard';
 import { searchDebuggingFiles, listDebuggingSymbols, runReactDebuggingPreview, runReactDebuggingTests, submitReactDebuggingSolution, PreviewResult, DebuggingResult, normalizeDebuggingPath } from '../lib/reactDebuggingRunner';
 import { useReactDebuggingProblems } from '../lib/useReactDebuggingProblems';
 import { getDraft, setDraft } from '../storage/stores/editorDraftStore';
@@ -34,6 +35,7 @@ const ReactDebuggingDetail = () => {
   const [testResult, setTestResult] = useState<DebuggingResult>();
   const [isRunning, setIsRunning] = useState(false);
   const [showExplain, setShowExplain] = useState(false);
+  const [runOutputExpanded, setRunOutputExpanded] = useState(true);
   const [difficulty, setDifficulty] = useState(3);
   const [confidence, setConfidence] = useState(3);
   const [rootCause, setRootCause] = useState('');
@@ -114,6 +116,7 @@ const ReactDebuggingDetail = () => {
     if (!previewHostRef.current) return;
     previewDisposeRef.current?.();
     setIsRunning(true);
+    setRunOutputExpanded(true);
     const result = await runReactDebuggingPreview({
       problem,
       edits: changedEdits,
@@ -126,6 +129,7 @@ const ReactDebuggingDetail = () => {
 
   const runTests = async (submit: boolean) => {
     setIsRunning(true);
+    setRunOutputExpanded(true);
     const now = new Date().toISOString();
     updateProgress(problem.id, {
       attempts: entry.attempts + 1,
@@ -242,7 +246,7 @@ const ReactDebuggingDetail = () => {
       )}
 
       {activeTab === 'run' && (
-        <section className="grid gap-6 lg:grid-cols-[220px_minmax(0,1.35fr)_minmax(360px,0.95fr)]">
+        <section className="grid w-full gap-6 lg:grid-cols-[220px_minmax(0,1fr)_400px]">
           <div className="glass rounded-2xl p-4 space-y-3">
             <div className="max-h-[420px] space-y-2 overflow-auto">
               {fileList.map((file) => (
@@ -275,6 +279,7 @@ const ReactDebuggingDetail = () => {
             )}
           </div>
           <div className="space-y-6">
+            <SolveTimerCard />
             <div className="flex flex-wrap gap-3">
               <button className="rounded-full bg-ember-500 px-4 py-2 text-xs font-semibold text-ink-950" onClick={() => void runPreview()} disabled={isRunning}>Run app</button>
               <button className="rounded-full border border-white/15 px-4 py-2 text-xs text-mist-200" onClick={() => void runTests(false)} disabled={isRunning}>Run tests</button>
@@ -294,10 +299,20 @@ const ReactDebuggingDetail = () => {
                 </div>
               </div>
               <div className="glass rounded-2xl p-4">
-                <h3 className="font-display text-lg">Test results</h3>
-                <div className="mt-3">
-                  <DebuggingRunResult result={testResult} preview={previewResult} />
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-lg">Run output</h3>
+                  <button
+                    className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist-200"
+                    onClick={() => setRunOutputExpanded((prev) => !prev)}
+                  >
+                    {runOutputExpanded ? 'Hide' : 'Show'}
+                  </button>
                 </div>
+                {runOutputExpanded && (
+                  <div className="mt-3">
+                    <DebuggingRunResult result={testResult} preview={previewResult} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
