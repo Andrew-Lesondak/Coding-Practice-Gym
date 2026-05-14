@@ -3,6 +3,7 @@ import { quizQuestions } from '../../data/quizzes';
 import { reactCodingProblems } from '../../data/reactCodingProblems';
 import { reactDebuggingProblems } from '../../data/reactDebuggingProblems';
 import { unitTestingProblems } from '../../data/unitTestingProblems';
+import { dataStructureProblems } from '../../data/dataStructureProblems';
 import { systemDesignDrills } from '../../data/systemDesignDrills';
 import { loadDrillAttempts } from '../dsaDrillStorage';
 import { loadMockSessions } from '../mockInterviewStorage';
@@ -16,7 +17,8 @@ import {
   QuizStats,
   ReactCodingStats,
   ReactDebuggingStats,
-  UnitTestingStats
+  UnitTestingStats,
+  DataStructureStats
 } from './types';
 import { ProgressState } from '../../types/progress';
 
@@ -180,6 +182,32 @@ export const buildUnitTestingStats = (progress: ProgressState): UnitTestingStats
       passes,
       score,
       weakFailure: Boolean(p?.lastWeakFailureAt),
+      totalSolveTimeSeconds,
+      confidence: p?.lastRating?.confidence
+    };
+  });
+};
+
+export const buildDataStructureStats = (progress: ProgressState): DataStructureStats[] => {
+  const entries = progress.dataStructures ?? {};
+  return dataStructureProblems.map((problem) => {
+    const p = entries[problem.id];
+    const attempts = p?.attempts ?? 0;
+    const passes = p?.passes ?? 0;
+    const score = attempts ? passes / attempts : 0;
+    const totalSolveTimeSeconds =
+      p?.startedAt && p?.lastPassedAt
+        ? Math.max(0, Math.round((new Date(p.lastPassedAt).getTime() - new Date(p.startedAt).getTime()) / 1000))
+        : undefined;
+
+    return {
+      problemId: problem.id,
+      structures: problem.structures,
+      operations: problem.operations,
+      category: problem.category,
+      attempts,
+      passes,
+      score,
       totalSolveTimeSeconds,
       confidence: p?.lastRating?.confidence
     };

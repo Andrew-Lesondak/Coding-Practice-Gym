@@ -8,6 +8,7 @@ import {
   buildReactCodingStats,
   buildReactDebuggingStats,
   buildUnitTestingStats,
+  buildDataStructureStats,
   generateInsights
 } from '../lib/analytics/engine';
 
@@ -21,6 +22,7 @@ const AnalyticsDashboard = () => {
   const reactStats = buildReactCodingStats(progress);
   const reactDebuggingStats = buildReactDebuggingStats(progress);
   const unitTestingStats = buildUnitTestingStats(progress);
+  const dataStructureStats = buildDataStructureStats(progress);
   const insights = generateInsights(dsaStats, drillStats, sdDrillStats, mockStats);
 
   const patterns = Array.from(new Set(dsaStats.flatMap((s) => s.patterns)));
@@ -91,6 +93,17 @@ const AnalyticsDashboard = () => {
       entry.weakFailures += stat.weakFailure ? 1 : 0;
       if (stat.totalSolveTimeSeconds !== undefined) entry.solveTimes.push(stat.totalSolveTimeSeconds);
       unitTestingByTopic[topic] = entry;
+    });
+  });
+  const dataStructuresByStructure: Record<string, { attempts: number; passes: number; operations: Set<string>; solveTimes: number[] }> = {};
+  dataStructureStats.forEach((stat) => {
+    stat.structures.forEach((structure) => {
+      const entry = dataStructuresByStructure[structure] ?? { attempts: 0, passes: 0, operations: new Set<string>(), solveTimes: [] };
+      entry.attempts += stat.attempts;
+      entry.passes += stat.passes;
+      stat.operations.forEach((operation) => entry.operations.add(operation));
+      if (stat.totalSolveTimeSeconds !== undefined) entry.solveTimes.push(stat.totalSolveTimeSeconds);
+      dataStructuresByStructure[structure] = entry;
     });
   });
 
@@ -240,6 +253,28 @@ const AnalyticsDashboard = () => {
                   <span>{topic}</span>
                   <span>{passRate}% pass rate</span>
                   <span>{stats.weakFailures} weak failures</span>
+                  <span>{avgSolve !== null ? `${avgSolve}s avg solve` : 'n/a'}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="glass rounded-2xl p-6">
+        <h2 className="font-display text-lg">Data Structures Stats</h2>
+        {Object.keys(dataStructuresByStructure).length === 0 ? (
+          <p className="mt-3 text-sm text-mist-300">Not enough Data Structures Gym data yet.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 text-xs text-mist-200">
+            {Object.entries(dataStructuresByStructure).map(([structure, stats]) => {
+              const passRate = stats.attempts ? Math.round((stats.passes / stats.attempts) * 100) : 0;
+              const avgSolve = stats.solveTimes.length ? Math.round(stats.solveTimes.reduce((a, b) => a + b, 0) / stats.solveTimes.length) : null;
+              return (
+                <div key={structure} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
+                  <span>{structure}</span>
+                  <span>{passRate}% pass rate</span>
+                  <span>{Array.from(stats.operations).join(', ')}</span>
                   <span>{avgSolve !== null ? `${avgSolve}s avg solve` : 'n/a'}</span>
                 </div>
               );

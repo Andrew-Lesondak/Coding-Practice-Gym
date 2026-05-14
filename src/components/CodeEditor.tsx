@@ -28,7 +28,8 @@ const CodeEditor = ({
   onChange,
   path,
   suppressDiagnostics = false,
-  readOnly = false
+  readOnly = false,
+  revealLine
 }: {
   value: string;
   language: 'typescript' | 'javascript';
@@ -36,6 +37,7 @@ const CodeEditor = ({
   path?: string;
   suppressDiagnostics?: boolean;
   readOnly?: boolean;
+  revealLine?: number;
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
@@ -79,6 +81,13 @@ const CodeEditor = ({
       monaco.editor.setModelLanguage(model, language);
     }
   }, [language]);
+
+  useEffect(() => {
+    if (!revealLine || !editorRef.current) return;
+    editorRef.current.revealLineInCenter(revealLine);
+    editorRef.current.setPosition({ lineNumber: revealLine, column: 1 });
+    editorRef.current.focus();
+  }, [revealLine]);
   useEffect(() => {
     if (!containerRef.current || !editorRef.current) return;
     let frame: number | null = null;

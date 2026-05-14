@@ -8,9 +8,10 @@ import { OverlayPack } from '../lib/problemPack';
 import { ReactCodingProgress } from '../types/reactCoding';
 import { ReactDebuggingProgress } from '../types/reactDebugging';
 import { UnitTestingProgress } from '../types/unitTesting';
+import { DataStructureProgress } from '../types/dataStructures';
 
 export const DB_NAME = 'coding-practice-gym-db';
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 export type EditorDraftRecord = {
   id: string;
@@ -70,6 +71,10 @@ export interface CodingPracticeGymDb extends DBSchema {
     key: string;
     value: UnitTestingProgress;
   };
+  dataStructures: {
+    key: string;
+    value: DataStructureProgress;
+  };
   dsaDrillAttempts: {
     key: string;
     value: DrillAttempt;
@@ -112,6 +117,7 @@ export const openDatabase = () => {
         if (!db.objectStoreNames.contains('reactCoding')) db.createObjectStore('reactCoding');
         if (!db.objectStoreNames.contains('reactDebugging')) db.createObjectStore('reactDebugging');
         if (!db.objectStoreNames.contains('unitTesting')) db.createObjectStore('unitTesting');
+        if (!db.objectStoreNames.contains('dataStructures')) db.createObjectStore('dataStructures');
         if (!db.objectStoreNames.contains('dsaDrillAttempts')) db.createObjectStore('dsaDrillAttempts');
         if (!db.objectStoreNames.contains('mockSessions')) db.createObjectStore('mockSessions');
         if (!db.objectStoreNames.contains('quizSessions')) db.createObjectStore('quizSessions');

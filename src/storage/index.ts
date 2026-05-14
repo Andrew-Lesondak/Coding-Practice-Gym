@@ -21,6 +21,7 @@ const isDbEmpty = async () => {
     db.count('reactCoding'),
     db.count('reactDebugging'),
     db.count('unitTesting'),
+    db.count('dataStructures'),
     db.count('dsaDrillAttempts'),
     db.count('mockSessions'),
     db.count('quizSessions'),
@@ -96,7 +97,9 @@ export const loadAllState = async () => {
     reactDebugKeys,
     reactDebugValues,
     unitTestingKeys,
-    unitTestingValues
+    unitTestingValues,
+    dataStructureKeys,
+    dataStructureValues
   ] = await Promise.all([
     db.getAllKeys('dsaProgress'),
     db.getAll('dsaProgress'),
@@ -111,7 +114,9 @@ export const loadAllState = async () => {
     db.getAllKeys('reactDebugging'),
     db.getAll('reactDebugging'),
     db.getAllKeys('unitTesting'),
-    db.getAll('unitTesting')
+    db.getAll('unitTesting'),
+    db.getAllKeys('dataStructures'),
+    db.getAll('dataStructures')
   ]);
 
   const settings = (await getSettings()) ?? null;
@@ -133,7 +138,8 @@ export const loadAllState = async () => {
       quizzes: toRecord(quizKeys, quizValues),
       reactCoding: toRecord(reactKeys, reactValues),
       reactDebugging: toRecord(reactDebugKeys, reactDebugValues),
-      unitTesting: toRecord(unitTestingKeys, unitTestingValues)
+      unitTesting: toRecord(unitTestingKeys, unitTestingValues),
+      dataStructures: toRecord(dataStructureKeys, dataStructureValues)
     },
     settings,
     overlayPack,

@@ -88,6 +88,18 @@ export type UnitTestingStats = {
   confidence?: number;
 };
 
+export type DataStructureStats = {
+  problemId: string;
+  structures: string[];
+  operations: string[];
+  category: string;
+  attempts: number;
+  passes: number;
+  score: number;
+  totalSolveTimeSeconds?: number;
+  confidence?: number;
+};
+
 export type Insight = {
   id: string;
   title: string;

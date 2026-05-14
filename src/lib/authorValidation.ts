@@ -11,8 +11,10 @@ import { ReactCodingProblem } from '../types/reactCoding';
 import { runReactTests } from './reactRunner';
 import { ReactDebuggingProblem } from '../types/reactDebugging';
 import { UnitTestingProblem } from '../types/unitTesting';
+import { DataStructureProblem } from '../types/dataStructures';
 import { normalizeDebuggingPath, resolveDebuggingImport, submitReactDebuggingSolution } from './reactDebuggingRunner';
 import { resolveUnitTestingImport, submitUnitTestingSolution, runUnitTestingTests } from './unitTestingRunner';
+import { runDataStructureTests, submitDataStructureSolution } from './dataStructureRunner';
 
 export type ValidationMessage = {
   type: 'error' | 'warning';
@@ -364,6 +366,43 @@ export const validateUnitTestingReference = async (
   }
 
   return [{ type: 'warning', message: 'Reference tests passed and killed the hidden mutants.' }];
+};
+
+export const validateDataStructureProblem = (problem: DataStructureProblem): ValidationMessage[] => {
+  const messages: ValidationMessage[] = [];
+  if (!problem.id) messages.push({ type: 'error', message: 'Problem id is required.' });
+  if (!problem.title) messages.push({ type: 'error', message: 'Title is required.' });
+  if (!problem.guidedStubTs.trim()) messages.push({ type: 'error', message: 'Guided stub is required.' });
+  if (!problem.referenceSolutionTs.trim()) messages.push({ type: 'error', message: 'Reference solution is required.' });
+  if (!problem.tests.visible.trim()) messages.push({ type: 'error', message: 'Visible tests are required.' });
+  if (!problem.tests.hidden.trim()) messages.push({ type: 'warning', message: 'Hidden tests are empty.' });
+  if (problem.operations.length === 0) messages.push({ type: 'warning', message: 'Add at least one operation.' });
+  messages.push(...validateStepMarkers(problem.guidedStubTs));
+  return messages;
+};
+
+export const validateDataStructureReference = async (
+  problem: DataStructureProblem
+): Promise<ValidationMessage[]> => {
+  const visibleResult = await runDataStructureTests({
+    problem,
+    code: problem.referenceSolutionTs
+  });
+
+  if (!visibleResult.ok) {
+    return [{ type: 'error', message: visibleResult.error ?? 'Reference solution failed visible tests.' }];
+  }
+
+  const submitResult = await submitDataStructureSolution({
+    problem,
+    code: problem.referenceSolutionTs
+  });
+
+  if (!submitResult.ok) {
+    return [{ type: 'error', message: submitResult.error ?? 'Reference solution failed hidden tests.' }];
+  }
+
+  return [{ type: 'warning', message: 'Reference solution passed all data structure tests.' }];
 };
 
 export const validateGuidedStubCompile = (stub: string): ValidationMessage[] => {

@@ -6,6 +6,7 @@ import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { ReactDebuggingProblem } from '../types/reactDebugging';
 import { UnitTestingProblem } from '../types/unitTesting';
+import { DataStructureProblem } from '../types/dataStructures';
 import { useAppStore } from '../store/useAppStore';
 import { OverlayPack, normalizeOverlayPack } from '../lib/problemPack';
 import {
@@ -23,7 +24,9 @@ import {
   validateReactDebuggingProblem,
   validateReactDebuggingReference,
   validateUnitTestingProblem,
-  validateUnitTestingReference
+  validateUnitTestingReference,
+  validateDataStructureProblem,
+  validateDataStructureReference
 } from '../lib/authorValidation';
 import { stableStringify } from '../lib/runnerUtils';
 
@@ -193,8 +196,32 @@ const defaultUnitTestingProblem = (): UnitTestingProblem => ({
   ]
 });
 
+const defaultDataStructureProblem = (): DataStructureProblem => ({
+  id: '',
+  title: '',
+  difficulty: 'easy',
+  category: 'linear',
+  structures: ['Stack'],
+  operations: ['push', 'pop'],
+  promptMarkdown: '',
+  requirements: [],
+  constraints: [],
+  guidedStubTs: '',
+  referenceSolutionTs: '',
+  tests: {
+    visible: 'export const tests = [];',
+    hidden: 'export const tests = [];'
+  },
+  metadata: {
+    expectedComplexities: [{ operation: 'push', time: 'O(1)' }],
+    commonPitfalls: [],
+    recallQuestions: [],
+    invariants: []
+  }
+});
+
 const Author = () => {
-  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz' | 'react' | 'react-debug' | 'unit-test'>('dsa');
+  const [mode, setMode] = useState<'dsa' | 'system' | 'drill' | 'quiz' | 'react' | 'react-debug' | 'unit-test' | 'data-structure'>('dsa');
   const [draft, setDraft] = useState<Problem>(defaultProblem());
   const [designDraft, setDesignDraft] = useState<SystemDesignPrompt>(defaultSystemDesignPrompt());
   const [quizDraft, setQuizDraft] = useState<QuizQuestion>(defaultQuizQuestion());
@@ -202,6 +229,7 @@ const Author = () => {
   const [reactDebugDraft, setReactDebugDraft] = useState<ReactDebuggingProblem>(defaultReactDebuggingProblem());
   const [reactDebugReferenceJson, setReactDebugReferenceJson] = useState('[]');
   const [unitTestingDraft, setUnitTestingDraft] = useState<UnitTestingProblem>(defaultUnitTestingProblem());
+  const [dataStructureDraft, setDataStructureDraft] = useState<DataStructureProblem>(defaultDataStructureProblem());
   const [drillDraft, setDrillDraft] = useState<SystemDesignDrill>({
     id: '',
     title: '',
@@ -241,6 +269,8 @@ const Author = () => {
       msgs.push(...validateReactDebuggingProblem(reactDebugDraft));
     } else if (mode === 'unit-test') {
       msgs.push(...validateUnitTestingProblem(unitTestingDraft));
+    } else if (mode === 'data-structure') {
+      msgs.push(...validateDataStructureProblem(dataStructureDraft));
     } else {
       msgs.push(...validateDesignStepMarkers(drillDraft.starterTemplateMarkdown));
       msgs.push(...validateDrill(drillDraft));
@@ -256,7 +286,8 @@ const Author = () => {
     quizDraft,
     reactDraft,
     reactDebugDraft,
-    unitTestingDraft
+    unitTestingDraft,
+    dataStructureDraft
   ]);
 
   useEffect(() => {
@@ -265,7 +296,7 @@ const Author = () => {
 
   useEffect(() => {
     let timer: number | undefined;
-    if (mode !== 'dsa' && mode !== 'react' && mode !== 'react-debug' && mode !== 'unit-test') {
+    if (mode !== 'dsa' && mode !== 'react' && mode !== 'react-debug' && mode !== 'unit-test' && mode !== 'data-structure') {
       setRefMessages([]);
       return;
     }
@@ -293,6 +324,10 @@ const Author = () => {
       setRefMessages([{ type: 'error', message: 'Reference test file is required.' }]);
       return;
     }
+    if (mode === 'data-structure' && !dataStructureDraft.referenceSolutionTs.trim()) {
+      setRefMessages([{ type: 'error', message: 'Reference solution is required.' }]);
+      return;
+    }
     setIsValidatingRef(true);
     timer = window.setTimeout(() => {
       if (mode === 'react') {
@@ -311,6 +346,11 @@ const Author = () => {
           setRefMessages(msgs);
           setIsValidatingRef(false);
         });
+      } else if (mode === 'data-structure') {
+        validateDataStructureReference(dataStructureDraft).then((msgs) => {
+          setRefMessages(msgs);
+          setIsValidatingRef(false);
+        });
       } else {
         validateReferenceSolution(draft).then((msgs) => {
           setRefMessages(msgs.length > 0 ? msgs : [{ type: 'warning', message: 'Reference solution passed all tests.' }]);
@@ -321,7 +361,7 @@ const Author = () => {
     return () => {
       if (timer) window.clearTimeout(timer);
     };
-  }, [draft, mode, reactDraft, reactDebugDraft, reactDebugReferenceJson, unitTestingDraft]);
+  }, [draft, mode, reactDraft, reactDebugDraft, reactDebugReferenceJson, unitTestingDraft, dataStructureDraft]);
 
   const hasBlockingErrors = messages.some((m) => m.type === 'error') || refMessages.some((m) => m.type === 'error');
 
@@ -334,6 +374,8 @@ const Author = () => {
     setReactDebugDraft((prev) => ({ ...prev, ...patch }));
   const updateUnitTestingDraft = (patch: Partial<UnitTestingProblem>) =>
     setUnitTestingDraft((prev) => ({ ...prev, ...patch }));
+  const updateDataStructureDraft = (patch: Partial<DataStructureProblem>) =>
+    setDataStructureDraft((prev) => ({ ...prev, ...patch }));
 
   const updateTests = (kind: 'visible' | 'hidden', index: number, patch: Partial<TestCase>) => {
     setDraft((prev) => {
@@ -371,6 +413,8 @@ const Author = () => {
         ? { ...reactDebugDraft, referenceFixedFiles: JSON.parse(reactDebugReferenceJson || '[]') }
         : mode === 'unit-test'
         ? unitTestingDraft
+        : mode === 'data-structure'
+        ? dataStructureDraft
         : drillDraft,
       null,
       2
@@ -412,6 +456,8 @@ const Author = () => {
         setReactDebugReferenceJson(JSON.stringify(next.referenceFixedFiles ?? [], null, 2));
       } else if (mode === 'unit-test') {
         setUnitTestingDraft(parsed as UnitTestingProblem);
+      } else if (mode === 'data-structure') {
+        setDataStructureDraft(parsed as DataStructureProblem);
       } else {
         setDrillDraft(parsed as SystemDesignDrill);
       }
@@ -434,6 +480,8 @@ const Author = () => {
         ? { ...reactDebugDraft, referenceFixedFiles: JSON.parse(reactDebugReferenceJson || '[]') }
         : mode === 'unit-test'
         ? unitTestingDraft
+        : mode === 'data-structure'
+        ? dataStructureDraft
         : drillDraft,
       null,
       2
@@ -453,6 +501,7 @@ const Author = () => {
     const mergedReact = existing?.reactCodingProblems ?? [];
     const mergedReactDebug = existing?.reactDebuggingProblems ?? [];
     const mergedUnitTesting = existing?.unitTestingProblems ?? [];
+    const mergedDataStructures = existing?.dataStructureProblems ?? [];
     let nextProblems = mergedProblems;
     let nextDesign = mergedDesign;
     let nextDrills = mergedDrills;
@@ -460,6 +509,7 @@ const Author = () => {
     let nextReact = mergedReact;
     let nextReactDebug = mergedReactDebug;
     let nextUnitTesting = mergedUnitTesting;
+    let nextDataStructures = mergedDataStructures;
     if (mode === 'dsa') {
       nextProblems = mergedProblems.filter((problem) => problem.id !== draft.id);
       nextProblems.push(draft);
@@ -478,6 +528,9 @@ const Author = () => {
     } else if (mode === 'unit-test') {
       nextUnitTesting = mergedUnitTesting.filter((problem) => problem.id !== unitTestingDraft.id);
       nextUnitTesting.push(unitTestingDraft);
+    } else if (mode === 'data-structure') {
+      nextDataStructures = mergedDataStructures.filter((problem) => problem.id !== dataStructureDraft.id);
+      nextDataStructures.push(dataStructureDraft);
     } else {
       nextDrills = mergedDrills.filter((drill) => drill.id !== drillDraft.id);
       nextDrills.push(drillDraft);
@@ -490,6 +543,7 @@ const Author = () => {
       reactCodingProblems: nextReact,
       reactDebuggingProblems: nextReactDebug,
       unitTestingProblems: nextUnitTesting,
+      dataStructureProblems: nextDataStructures,
       updatedAt: new Date().toISOString(),
       version: 1
     };
@@ -568,6 +622,14 @@ const Author = () => {
             onClick={() => setMode('unit-test')}
           >
             Unit Testing
+          </button>
+          <button
+            className={`rounded-full border px-4 py-2 text-xs ${
+              mode === 'data-structure' ? 'border-ember-500/60 bg-ember-500/10 text-ember-300' : 'border-white/10 text-mist-200'
+            }`}
+            onClick={() => setMode('data-structure')}
+          >
+            Data Structures
           </button>
           <button
             className={`rounded-full border px-4 py-2 text-xs ${
@@ -925,6 +987,65 @@ const Author = () => {
                 />
               </label>
             </div>
+          ) : mode === 'data-structure' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                ID
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.id}
+                  onChange={(e) => updateDataStructureDraft({ id: e.target.value.trim() })}
+                />
+              </label>
+              <label className="text-sm">
+                Title
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.title}
+                  onChange={(e) => updateDataStructureDraft({ title: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Difficulty
+                <select
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-ink-900 p-2 text-sm"
+                  value={dataStructureDraft.difficulty}
+                  onChange={(e) => updateDataStructureDraft({ difficulty: e.target.value as DataStructureProblem['difficulty'] })}
+                >
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Category
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.category}
+                  onChange={(e) => updateDataStructureDraft({ category: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Structures (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.structures.join(', ')}
+                  onChange={(e) =>
+                    updateDataStructureDraft({ structures: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Operations (comma separated)
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.operations.join(', ')}
+                  onChange={(e) =>
+                    updateDataStructureDraft({ operations: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) })
+                  }
+                />
+              </label>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm">
@@ -1034,6 +1155,15 @@ const Author = () => {
                 onChange={(e) => updateUnitTestingDraft({ promptMarkdown: e.target.value })}
               />
             </label>
+          ) : mode === 'data-structure' ? (
+            <label className="text-sm">
+              Prompt (Markdown)
+              <textarea
+                className="mt-2 h-28 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                value={dataStructureDraft.promptMarkdown}
+                onChange={(e) => updateDataStructureDraft({ promptMarkdown: e.target.value })}
+              />
+            </label>
           ) : (
             <label className="text-sm">
               Prompt (Markdown)
@@ -1045,7 +1175,7 @@ const Author = () => {
             </label>
           )}
 
-          {(mode === 'dsa' || mode === 'system' || mode === 'react' || mode === 'unit-test') && (
+          {(mode === 'dsa' || mode === 'system' || mode === 'react' || mode === 'unit-test' || mode === 'data-structure') && (
             <label className="text-sm">
               Constraints (one per line)
               <textarea
@@ -1057,7 +1187,9 @@ const Author = () => {
                     ? designDraft.constraints.join('\n')
                     : mode === 'react'
                     ? reactDraft.constraints.join('\n')
-                    : unitTestingDraft.constraints.join('\n')
+                    : mode === 'unit-test'
+                    ? unitTestingDraft.constraints.join('\n')
+                    : dataStructureDraft.constraints.join('\n')
                 }
                 onChange={(e) =>
                   mode === 'dsa'
@@ -1070,7 +1202,11 @@ const Author = () => {
                     ? updateReactDraft({
                         constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
-                    : updateUnitTestingDraft({
+                    : mode === 'unit-test'
+                    ? updateUnitTestingDraft({
+                        constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
+                    : updateDataStructureDraft({
                         constraints: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
                 }
@@ -1078,18 +1214,28 @@ const Author = () => {
             </label>
           )}
 
-          {(mode === 'react' || mode === 'unit-test') && (
+          {(mode === 'react' || mode === 'unit-test' || mode === 'data-structure') && (
             <label className="text-sm">
               Requirements (one per line)
               <textarea
                 className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
-                value={mode === 'react' ? reactDraft.requirements.join('\n') : unitTestingDraft.requirements.join('\n')}
+                value={
+                  mode === 'react'
+                    ? reactDraft.requirements.join('\n')
+                    : mode === 'unit-test'
+                    ? unitTestingDraft.requirements.join('\n')
+                    : dataStructureDraft.requirements.join('\n')
+                }
                 onChange={(e) =>
                   mode === 'react'
                     ? updateReactDraft({
                         requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
-                    : updateUnitTestingDraft({
+                    : mode === 'unit-test'
+                    ? updateUnitTestingDraft({
+                        requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      })
+                    : updateDataStructureDraft({
                         requirements: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
                       })
                 }
@@ -1168,6 +1314,26 @@ const Author = () => {
                       setJsonBlob(e.target.value);
                     }
                   }}
+                />
+              </label>
+            </div>
+          )}
+          {mode === 'data-structure' && (
+            <div className="grid gap-4">
+              <label className="text-sm">
+                Guided stub (TS)
+                <textarea
+                  className="mt-2 h-56 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                  value={dataStructureDraft.guidedStubTs}
+                  onChange={(e) => updateDataStructureDraft({ guidedStubTs: e.target.value })}
+                />
+              </label>
+              <label className="text-sm">
+                Reference solution (TS)
+                <textarea
+                  className="mt-2 h-56 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm font-mono"
+                  value={dataStructureDraft.referenceSolutionTs}
+                  onChange={(e) => updateDataStructureDraft({ referenceSolutionTs: e.target.value })}
                 />
               </label>
             </div>
@@ -1530,6 +1696,34 @@ const Author = () => {
               </label>
             </>
           )}
+          {mode === 'data-structure' && (
+            <>
+              <label className="text-sm">
+                Visible tests module
+                <textarea
+                  className="mt-2 h-40 w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs font-mono"
+                  value={dataStructureDraft.tests.visible}
+                  onChange={(e) =>
+                    updateDataStructureDraft({
+                      tests: { ...dataStructureDraft.tests, visible: e.target.value }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Hidden tests module
+                <textarea
+                  className="mt-2 h-32 w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs font-mono"
+                  value={dataStructureDraft.tests.hidden}
+                  onChange={(e) =>
+                    updateDataStructureDraft({
+                      tests: { ...dataStructureDraft.tests, hidden: e.target.value }
+                    })
+                  }
+                />
+              </label>
+            </>
+          )}
           {mode === 'system' && (
             <label className="text-sm">
               Reference overview (Markdown)
@@ -1693,6 +1887,73 @@ const Author = () => {
                   onChange={(e) =>
                     updateUnitTestingDraft({
                       recallQuestions: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                    })
+                  }
+                />
+              </label>
+            </div>
+          ) : mode === 'data-structure' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm">
+                Expected complexities JSON
+                <textarea
+                  className="mt-2 h-32 w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs font-mono"
+                  value={JSON.stringify(dataStructureDraft.metadata.expectedComplexities, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      updateDataStructureDraft({
+                        metadata: {
+                          ...dataStructureDraft.metadata,
+                          expectedComplexities: JSON.parse(e.target.value)
+                        }
+                      });
+                    } catch {
+                      setJsonBlob(e.target.value);
+                    }
+                  }}
+                />
+              </label>
+              <label className="text-sm">
+                Invariants (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.metadata.invariants.join('\n')}
+                  onChange={(e) =>
+                    updateDataStructureDraft({
+                      metadata: {
+                        ...dataStructureDraft.metadata,
+                        invariants: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Common pitfalls (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.metadata.commonPitfalls.join('\n')}
+                  onChange={(e) =>
+                    updateDataStructureDraft({
+                      metadata: {
+                        ...dataStructureDraft.metadata,
+                        commonPitfalls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Recall questions (one per line)
+                <textarea
+                  className="mt-2 h-20 w-full rounded-xl border border-white/10 bg-transparent p-2 text-sm"
+                  value={dataStructureDraft.metadata.recallQuestions.join('\n')}
+                  onChange={(e) =>
+                    updateDataStructureDraft({
+                      metadata: {
+                        ...dataStructureDraft.metadata,
+                        recallQuestions: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean)
+                      }
                     })
                   }
                 />
@@ -1936,6 +2197,14 @@ const Author = () => {
               <h3 className="font-display text-lg">Unit Testing metadata</h3>
               <p className="text-xs text-mist-300">
                 Source files and mutants are authored as JSON. Validation checks step markers, reference tests, import resolution, and whether the reference tests kill the hidden mutants.
+              </p>
+            </div>
+          )}
+          {mode === 'data-structure' && (
+            <div className="glass rounded-2xl p-5 space-y-4">
+              <h3 className="font-display text-lg">Data Structure metadata</h3>
+              <p className="text-xs text-mist-300">
+                Visible and hidden tests should export a <code>tests</code> array. Validation checks guided step markers and runs the reference solution against both visible and hidden worker tests.
               </p>
             </div>
           )}

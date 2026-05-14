@@ -31,6 +31,9 @@ import ReactDebuggingDetail from '../pages/ReactDebuggingDetail';
 import UnitTestingDashboard from '../pages/UnitTestingDashboard';
 import UnitTestingCatalog from '../pages/UnitTestingCatalog';
 import UnitTestingDetail from '../pages/UnitTestingDetail';
+import DataStructuresDashboard from '../pages/DataStructuresDashboard';
+import DataStructuresCatalog from '../pages/DataStructuresCatalog';
+import DataStructuresDetail from '../pages/DataStructuresDetail';
 import { validateProblemPack, ValidationIssue } from '../lib/devValidation';
 import { useProblems } from '../lib/useProblems';
 import { initializeStorage, loadAllState, loadLegacyState } from '../storage';
@@ -160,6 +163,9 @@ const App = () => {
         <Route path="/unit-testing" element={<UnitTestingDashboard />} />
         <Route path="/unit-testing/catalog" element={<UnitTestingCatalog />} />
         <Route path="/unit-testing/:id" element={<UnitTestingDetail />} />
+        <Route path="/data-structures" element={<DataStructuresDashboard />} />
+        <Route path="/data-structures/catalog" element={<DataStructuresCatalog />} />
+        <Route path="/data-structures/:id" element={<DataStructuresDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/author" element={<Author />} />
         <Route path="*" element={<Navigate to="/" replace />} />

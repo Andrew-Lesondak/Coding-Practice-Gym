@@ -1,4 +1,4 @@
-import { buildReactDebuggingStats, buildUnitTestingStats, generateInsights } from '../lib/analytics/engine';
+import { buildDataStructureStats, buildReactDebuggingStats, buildUnitTestingStats, generateInsights } from '../lib/analytics/engine';
 
 describe('analytics insights', () => {
   it('flags speed vs accuracy drop', () => {
@@ -71,5 +71,33 @@ describe('analytics insights', () => {
     const entry = stats.find((item) => item.problemId === 'unit-testing-sum-positive-numbers');
     expect(entry?.weakFailure).toBe(true);
     expect(entry?.totalSolveTimeSeconds).toBe(120);
+  });
+
+  it('builds data structure timing stats', () => {
+    const stats = buildDataStructureStats({
+      problems: {},
+      systemDesign: {},
+      systemDesignDrills: {},
+      quizzes: {},
+      reactCoding: {},
+      reactDebugging: {},
+      unitTesting: {},
+      dataStructures: {
+        'data-structure-stack': {
+          attempts: 2,
+          passes: 1,
+          stepCompletion: {},
+          startedAt: '2026-05-14T10:00:00.000Z',
+          lastPassedAt: '2026-05-14T10:01:30.000Z',
+          reviewIntervalDays: 2,
+          easeFactor: 2.3,
+          explanationHistory: []
+        }
+      }
+    } as any);
+
+    const entry = stats.find((item) => item.problemId === 'data-structure-stack');
+    expect(entry?.score).toBe(0.5);
+    expect(entry?.totalSolveTimeSeconds).toBe(90);
   });
 });

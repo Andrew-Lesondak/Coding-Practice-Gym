@@ -5,6 +5,7 @@ import { QuizQuestion } from '../types/quiz';
 import { ReactCodingProblem } from '../types/reactCoding';
 import { ReactDebuggingProblem } from '../types/reactDebugging';
 import { UnitTestingProblem } from '../types/unitTesting';
+import { DataStructureProblem } from '../types/dataStructures';
 
 export type OverlayPack = ProblemPack & {
   systemDesignPrompts?: SystemDesignPrompt[];
@@ -13,6 +14,7 @@ export type OverlayPack = ProblemPack & {
   reactCodingProblems?: ReactCodingProblem[];
   reactDebuggingProblems?: ReactDebuggingProblem[];
   unitTestingProblems?: UnitTestingProblem[];
+  dataStructureProblems?: DataStructureProblem[];
 };
 
 export const normalizeOverlayPack = (pack: OverlayPack | null): OverlayPack | null => {
@@ -25,7 +27,8 @@ export const normalizeOverlayPack = (pack: OverlayPack | null): OverlayPack | nu
     quizQuestions: Array.isArray(pack.quizQuestions) ? pack.quizQuestions : [],
     reactCodingProblems: Array.isArray(pack.reactCodingProblems) ? pack.reactCodingProblems : [],
     reactDebuggingProblems: Array.isArray(pack.reactDebuggingProblems) ? pack.reactDebuggingProblems : [],
-    unitTestingProblems: Array.isArray(pack.unitTestingProblems) ? pack.unitTestingProblems : []
+    unitTestingProblems: Array.isArray(pack.unitTestingProblems) ? pack.unitTestingProblems : [],
+    dataStructureProblems: Array.isArray(pack.dataStructureProblems) ? pack.dataStructureProblems : []
   };
   return normalized;
 };
@@ -85,6 +88,17 @@ export const mergeUnitTestingPacks = (
 ): UnitTestingProblem[] => {
   if (!overlay || overlay.length === 0) return base;
   const map = new Map<string, UnitTestingProblem>();
+  base.forEach((problem) => map.set(problem.id, problem));
+  overlay.forEach((problem) => map.set(problem.id, problem));
+  return Array.from(map.values());
+};
+
+export const mergeDataStructurePacks = (
+  base: DataStructureProblem[],
+  overlay?: DataStructureProblem[]
+): DataStructureProblem[] => {
+  if (!overlay || overlay.length === 0) return base;
+  const map = new Map<string, DataStructureProblem>();
   base.forEach((problem) => map.set(problem.id, problem));
   overlay.forEach((problem) => map.set(problem.id, problem));
   return Array.from(map.values());

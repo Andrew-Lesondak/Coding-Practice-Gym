@@ -11,6 +11,7 @@ import { QuizProgress } from '../types/quiz';
 import { ReactCodingProgress } from '../types/reactCoding';
 import { ReactDebuggingProgress } from '../types/reactDebugging';
 import { UnitTestingProgress } from '../types/unitTesting';
+import { DataStructureProgress } from '../types/dataStructures';
 import { OverlayPack } from '../lib/problemPack';
 import { DrillAttempt } from '../lib/dsaDrillStorage';
 import { SystemDesignMockSession } from '../types/systemDesignMock';
@@ -23,6 +24,7 @@ import { setQuizProgressEntry } from '../storage/stores/quizProgressStore';
 import { setReactCodingProgressEntry } from '../storage/stores/reactCodingStore';
 import { setReactDebuggingProgressEntry } from '../storage/stores/reactDebuggingStore';
 import { setUnitTestingProgressEntry } from '../storage/stores/unitTestingStore';
+import { setDataStructureProgressEntry } from '../storage/stores/dataStructuresStore';
 import { setSettings } from '../storage/stores/settingsStore';
 import { clearOverlayPack, setOverlayPack as persistOverlayPack } from '../storage/stores/overlayPackStore';
 import { addDrillAttempt } from '../storage/stores/dsaDrillsStore';
@@ -91,6 +93,15 @@ const createDefaultReactDebuggingProgress = (): ReactDebuggingProgress => ({
 });
 
 const createDefaultUnitTestingProgress = (): UnitTestingProgress => ({
+  attempts: 0,
+  passes: 0,
+  stepCompletion: {},
+  reviewIntervalDays: 2,
+  easeFactor: 2.3,
+  explanationHistory: []
+});
+
+const createDefaultDataStructureProgress = (): DataStructureProgress => ({
   attempts: 0,
   passes: 0,
   stepCompletion: {},
@@ -169,6 +180,12 @@ type AppState = {
     problemId: string,
     explanation: { behaviorProof: string; edgeCase: string; brittleness: string }
   ) => void;
+  updateDataStructureProgress: (problemId: string, patch: Partial<DataStructureProgress>) => void;
+  setDataStructureStepStatus: (problemId: string, stepIndex: number, status: StepCompletion[number]) => void;
+  saveDataStructureExplanation: (
+    problemId: string,
+    explanation: { invariant: string; operation: string; edgeCase: string }
+  ) => void;
   addDrillAttempt: (attempt: DrillAttempt) => void;
   addMockSession: (session: SystemDesignMockSession) => void;
   addQuizSession: (session: QuizSession) => void;
@@ -177,7 +194,7 @@ type AppState = {
 };
 
 export const getDefaultDataState = () => ({
-  progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {}, reactCoding: {}, reactDebugging: {}, unitTesting: {} },
+  progress: { problems: {}, systemDesign: {}, systemDesignDrills: {}, quizzes: {}, reactCoding: {}, reactDebugging: {}, unitTesting: {}, dataStructures: {} },
   settings: initialSettings,
   overlayPack: null,
   overlayVersion: 0,
@@ -206,7 +223,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
             quizzes: payload.progress.quizzes ?? state.progress.quizzes,
             reactCoding: payload.progress.reactCoding ?? state.progress.reactCoding,
             reactDebugging: payload.progress.reactDebugging ?? state.progress.reactDebugging,
-            unitTesting: payload.progress.unitTesting ?? state.progress.unitTesting
+            unitTesting: payload.progress.unitTesting ?? state.progress.unitTesting,
+            dataStructures: payload.progress.dataStructures ?? state.progress.dataStructures
           }
         : state.progress,
       settings: payload.settings ?? state.settings,
@@ -681,6 +699,68 @@ export const useAppStore = create<AppState>()((set, get) => ({
       void setUnitTestingProgressEntry(problemId, next);
     }
   },
+  updateDataStructureProgress: (problemId, patch) => {
+    const current = get().progress.dataStructures?.[problemId] ?? createDefaultDataStructureProgress();
+    const next = { ...current, ...patch };
+    set((state) => ({
+      progress: {
+        ...state.progress,
+        dataStructures: {
+          ...(state.progress.dataStructures ?? {}),
+          [problemId]: next
+        }
+      }
+    }));
+    if (shouldPersist(get().storageStatus)) {
+      void setDataStructureProgressEntry(problemId, next);
+    }
+  },
+  setDataStructureStepStatus: (problemId, stepIndex, status) => {
+    const current = get().progress.dataStructures?.[problemId] ?? createDefaultDataStructureProgress();
+    const next = {
+      ...current,
+      stepCompletion: {
+        ...current.stepCompletion,
+        [stepIndex]: status
+      }
+    };
+    set((state) => ({
+      progress: {
+        ...state.progress,
+        dataStructures: {
+          ...(state.progress.dataStructures ?? {}),
+          [problemId]: next
+        }
+      }
+    }));
+    if (shouldPersist(get().storageStatus)) {
+      void setDataStructureProgressEntry(problemId, next);
+    }
+  },
+  saveDataStructureExplanation: (problemId, explanation) => {
+    const current = get().progress.dataStructures?.[problemId] ?? createDefaultDataStructureProgress();
+    const updatedAt = new Date().toISOString();
+    const existing = current.explanation;
+    const history = current.explanationHistory ?? [];
+    const nextHistory = existing ? [...history, existing] : history;
+    const next = {
+      ...current,
+      explanation: { ...explanation, updatedAt },
+      explanationHistory: nextHistory
+    };
+    set((state) => ({
+      progress: {
+        ...state.progress,
+        dataStructures: {
+          ...(state.progress.dataStructures ?? {}),
+          [problemId]: next
+        }
+      }
+    }));
+    if (shouldPersist(get().storageStatus)) {
+      void setDataStructureProgressEntry(problemId, next);
+    }
+  },
   addDrillAttempt: (attempt) => {
     set((state) => ({
       drillAttempts: [...state.drillAttempts, attempt]
@@ -758,4 +838,11 @@ export const getUnitTestingProgress = (
   problemId: string
 ): UnitTestingProgress => {
   return state.unitTesting?.[problemId] ?? createDefaultUnitTestingProgress();
+};
+
+export const getDataStructureProgress = (
+  state: ProgressState,
+  problemId: string
+): DataStructureProgress => {
+  return state.dataStructures?.[problemId] ?? createDefaultDataStructureProgress();
 };

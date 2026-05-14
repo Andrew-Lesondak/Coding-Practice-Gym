@@ -6,6 +6,7 @@ import {
 } from '../storage/stores/systemDesignDrillsStore';
 import { setQuizProgressEntry, getQuizProgressEntry } from '../storage/stores/quizProgressStore';
 import { setReactCodingProgressEntry, getReactCodingProgressEntry } from '../storage/stores/reactCodingStore';
+import { setDataStructureProgressEntry, getDataStructureProgressEntry } from '../storage/stores/dataStructuresStore';
 import { setSettings, getSettings } from '../storage/stores/settingsStore';
 import { setOverlayPack, getOverlayPack, clearOverlayPack } from '../storage/stores/overlayPackStore';
 import { addDrillAttempt, getDrillAttempts } from '../storage/stores/dsaDrillsStore';
@@ -48,6 +49,14 @@ describe('storage stores', () => {
     });
     await setQuizProgressEntry('quiz-1', { attempts: 1, correctCount: 1, reviewIntervalDays: 2, easeFactor: 2.3 });
     await setReactCodingProgressEntry('react-1', {
+      attempts: 1,
+      passes: 1,
+      stepCompletion: {},
+      reviewIntervalDays: 2,
+      easeFactor: 2.3,
+      explanationHistory: []
+    });
+    await setDataStructureProgressEntry('ds-1', {
       attempts: 1,
       passes: 1,
       stepCompletion: {},
@@ -117,6 +126,7 @@ describe('storage stores', () => {
     expect((await getSystemDesignDrillProgressEntry('sd-drill'))?.attempts).toBe(1);
     expect((await getQuizProgressEntry('quiz-1'))?.correctCount).toBe(1);
     expect((await getReactCodingProgressEntry('react-1'))?.passes).toBe(1);
+    expect((await getDataStructureProgressEntry('ds-1'))?.passes).toBe(1);
     expect((await getSettings())?.languageMode).toBe('js');
     expect((await getOverlayPack())?.version).toBe(1);
     expect((await getDrillAttempts()).length).toBe(1);

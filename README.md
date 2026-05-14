@@ -313,6 +313,8 @@ Switch the authoring mode to “System Design” to draft a system design prompt
 Switch to “Quizzes” to draft quiz questions and validate choices/correct answers.
 Switch to “React Coding” to draft React component problems and validate stubs/tests.
 Switch to “React Debugging” to draft multi-file debugging challenges and validate import resolution, entry files, tests, and a separate fixed reference codebase.
+Switch to “Unit Testing” to draft test-writing problems with guided test stubs, reference tests, and hidden mutant validation.
+Switch to “Data Structures” to draft guided implementation problems for core structures and validate the reference solution against visible and hidden worker tests.
 
 ### Stub marker format
 
@@ -334,6 +336,8 @@ Overlay packs also support system design prompts via the `systemDesignPrompts` a
 Overlay packs also support quiz questions via the `quizQuestions` array.
 Overlay packs also support React coding problems via the `reactCodingProblems` array.
 Overlay packs also support React debugging problems via the `reactDebuggingProblems` array.
+Overlay packs also support Unit Testing problems via the `unitTestingProblems` array.
+Overlay packs also support Data Structures problems via the `dataStructureProblems` array.
 
 ### Authoring React debugging challenges
 
@@ -369,6 +373,56 @@ The authoring UI validates:
 - a separate fixed reference codebase JSON
 
 The simpler reliable authoring path is a separate fixed codebase. The reference files are used only for validation and are not required by the runtime challenge payload.
+
+### Data Structures Gym
+
+`/data-structures` is a guided module for implementing data structures themselves rather than solving algorithm prompts that use them.
+
+Each `DataStructureProblem` includes:
+
+- `guidedStubTs`
+- `referenceSolutionTs`
+- visible and hidden test modules
+- structure and operation metadata
+- expected complexities
+- invariants
+- common pitfalls
+- recall questions
+
+The Implement tab reuses the existing guided-step parser:
+
+```ts
+export class Stack<T> {
+  // Step 1: Initialize storage.
+  // TODO(step 1 start)
+  // placeholder
+  // TODO(step 1 end)
+}
+```
+
+Worker-side tests must export a `tests` array:
+
+```ts
+export const tests = [
+  {
+    name: "push adds a value",
+    run: ({ module, expect }) => {
+      const stack = new module.Stack<number>();
+      stack.push(1);
+      expect(stack.peek()).toBe(1);
+    }
+  }
+];
+```
+
+Tests should:
+
+- instantiate the public class or exported helpers
+- assert only public behavior
+- cover empty-state and interleaved-operation edge cases
+- avoid enforcing one exact private representation
+
+The Review tab emphasizes invariants because they are the shortest path to reasoning about whether a structure is still valid after every mutation.
 
 ## Roadmap (v2 ideas)
 

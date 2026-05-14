@@ -1,5 +1,6 @@
 import { initializeStorage, loadAllState } from '../storage';
 import { setProblemProgress } from '../storage/stores/dsaProgressStore';
+import { setDataStructureProgressEntry } from '../storage/stores/dataStructuresStore';
 import { setSettings } from '../storage/stores/settingsStore';
 import { useAppStore } from '../store/useAppStore';
 import { resetDatabaseHard } from '../storage/db';
@@ -35,6 +36,32 @@ describe('storage integration', () => {
 
     expect(useAppStore.getState().progress.problems.demo.passes).toBe(1);
     expect(useAppStore.getState().settings.languageMode).toBe('js');
+  });
+
+  it('loads data structure progress from IndexedDB on startup', async () => {
+    await setDataStructureProgressEntry('data-structure-stack', {
+      attempts: 2,
+      passes: 1,
+      stepCompletion: {},
+      reviewIntervalDays: 2,
+      easeFactor: 2.3,
+      explanationHistory: []
+    });
+
+    await initializeStorage();
+    const state = await loadAllState();
+    useAppStore.getState().hydrateFromStorage({
+      progress: state.progress,
+      settings: state.settings,
+      overlayPack: state.overlayPack,
+      drillAttempts: state.drillAttempts,
+      mockSessions: state.mockSessions,
+      quizSessions: state.quizSessions,
+      adaptivePlans: state.adaptivePlans,
+      adaptiveRuns: state.adaptiveRuns
+    });
+
+    expect(useAppStore.getState().progress.dataStructures?.['data-structure-stack']?.passes).toBe(1);
   });
 
   it('migrates legacy localStorage data on initialization', async () => {

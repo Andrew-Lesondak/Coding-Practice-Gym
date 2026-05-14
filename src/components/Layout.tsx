@@ -27,6 +27,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       { to: '/', label: 'Dashboard' },
       { to: '/catalog', label: 'Problems' },
       { to: '/dsa/drills', label: 'DSA Drills' },
+      { to: '/data-structures', label: 'Data Structures' },
       { to: '/system-design', label: 'System Design' },
       { to: '/system-design/drills', label: 'Drills' },
       { to: '/system-design/mock', label: 'Mock Interview' },
